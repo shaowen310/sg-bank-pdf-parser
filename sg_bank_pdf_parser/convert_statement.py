@@ -49,7 +49,7 @@ def get_renderer(bank: str, family: str):
 PARSER_NAME_TO_BANK_FAMILY: dict[str, tuple[str, str]] = {
     "dbs_sg": ("dbs", "consolidated"),
     "icbc_sg": ("icbc", "statement"),
-    "ocbc_bank": ("ocbc", "bank"),
+    "ocbc_consolidated": ("ocbc", "consolidated"),
     "ocbc_card": ("ocbc", "card"),
     "uob_txn": ("uob", "txn"),
     "uob_one": ("uob", "one"),
@@ -70,7 +70,7 @@ def detect_type(pdf: PDFType) -> tuple[str, str]:
             "one" (UOB One multi-account transaction-style),
             "portfolio" (UOB portfolio summary),
             "statement" (ICBC bank account statement),
-            "card" (OCBC credit card), "bank" (OCBC bank account).
+            "card" (OCBC credit card), "consolidated" (OCBC consolidated statement).
     """
     full_text: str = ""
     for page in pdf.pages:
@@ -144,7 +144,7 @@ def detect_ocbc(pdf: PDFType) -> tuple[str, str] | None:
     full_page = (page.extract_text() or "").lower()
     if "payment due" in full_page and "credit limit" in full_page:
         return ("ocbc", "card")
-    return ("ocbc", "bank")
+    return ("ocbc", "consolidated")
 
 
 def detect_uob(pdf: PDFType) -> tuple[str, str] | None:
@@ -301,7 +301,7 @@ def main() -> None:
     if bank == "uob":
         label = {"txn": "UOB transaction-style", "one": "UOB One multi-account", "portfolio": "UOB portfolio summary"}.get(family, label)
     elif bank == "ocbc":
-        label = {"bank": "OCBC bank account", "card": "OCBC credit card"}.get(family, label)
+        label = {"consolidated": "OCBC consolidated statement", "card": "OCBC credit card"}.get(family, label)
 
     print(f"Statement type: {label}")
     print(f"Records: {sum(len(a.transactions) for a in ir.accounts)}")

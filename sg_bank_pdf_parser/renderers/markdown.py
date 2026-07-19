@@ -502,11 +502,11 @@ def uob_one_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) 
 
 
 # ============================================================================
-# OCBC Bank Account
+# OCBC Consolidated Statement
 # ============================================================================
 
-def ocbc_bank_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> str:
-    """Render an OCBC bank account statement from IR."""
+def ocbc_consolidated_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> str:
+    """Render an OCBC consolidated statement from IR."""
     meta = statement.statement_meta
 
     out: list[str] = []
@@ -880,7 +880,7 @@ MD_RENDERER_REGISTRY: dict[tuple[str, str], Callable[..., str]] = {
     ("uob", "txn"): uob_txn_ir_to_markdown,
     ("uob", "one"): uob_one_ir_to_markdown,
     ("uob", "portfolio"): uob_portfolio_ir_to_markdown,
-    ("ocbc", "bank"): ocbc_bank_ir_to_markdown,
+    ("ocbc", "consolidated"): ocbc_consolidated_ir_to_markdown,
     ("ocbc", "card"): ocbc_card_ir_to_markdown,
     ("icbc", "statement"): icbc_ir_to_markdown,
 }

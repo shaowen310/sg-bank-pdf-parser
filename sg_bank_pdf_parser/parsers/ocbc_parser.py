@@ -1,8 +1,8 @@
-"""OCBC bank account & credit card statement parsers.
+"""OCBC consolidated statement & credit card statement parsers.
 
 This module parses two flavors of OCBC statement PDFs:
 
-  - ``parse_bank``  — OCBC bank-account statement (multi-section: STATEMENT
+  - ``parse_consolidated``  — OCBC bank-account statement (multi-section: STATEMENT
     SAVINGS / 360 ACCOUNT / TIME DEPOSITS, with Cheque / Withdrawal / Deposit /
     Balance columns).
   - ``parse_card``  — OCBC credit card statement (TRANSACTION DATE / AMOUNT
@@ -11,7 +11,7 @@ This module parses two flavors of OCBC statement PDFs:
 
 Each parser returns a tuple ``(meta, records[, extras])`` that is consumed by the
 OCBC extractor (``ocbc_extractor.py``) and rendered to Markdown by
-``renderers.markdown.ocbc_bank_ir_to_markdown`` / ``ocbc_card_ir_to_markdown``.
+``renderers.markdown.ocbc_consolidated_ir_to_markdown`` / ``ocbc_card_ir_to_markdown``.
 """
 from __future__ import annotations
 
@@ -84,7 +84,7 @@ class CardTxn(CardTxnBase, total=False):
 # Stable across statements of the same bank and product family.
 # ----------------------------------------------------------------------------
 
-# --- OCBC bank account statement ---
+# --- OCBC consolidated statement ---
 BANK_TXN_DATE_X = (40, 80)     # "DD MMM" token (two words: day, month)
 BANK_VAL_DATE_X = (85, 120)    # "DD MMM" token
 BANK_DESC_X_START = 130        # description begins here
@@ -121,7 +121,7 @@ def parse_card_amount(s: str) -> float:
 
 
 # ============================================================================
-# OCBC BANK ACCOUNT STATEMENT
+# OCBC CONSOLIDATED STATEMENT
 # ============================================================================
 
 def classify_bank_num(word: WordDict) -> str | None:
@@ -137,7 +137,7 @@ def classify_bank_num(word: WordDict) -> str | None:
     return None
 
 
-def parse_bank(pdf: PDF) -> tuple[BankMeta, list[BankTxn], list[TimeDeposit]]:
+def parse_consolidated(pdf: PDF) -> tuple[BankMeta, list[BankTxn], list[TimeDeposit]]:
     transactions: list[BankTxn] = []
     time_deposits: list[TimeDeposit] = []
     meta: BankMeta = {"statement_date": "", "currency": "SGD", "page_count": len(pdf.pages)}

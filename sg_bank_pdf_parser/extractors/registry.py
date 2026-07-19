@@ -9,7 +9,7 @@ from __future__ import annotations
 from .dbs_extractor import DBSExtractor
 from .base import BaseExtractor
 from .icbc_extractor import ICBCExtractor
-from .ocbc_extractor import OCBCBankExtractor, OCRCCardExtractor
+from .ocbc_extractor import OCBCConsolidatedExtractor, OCRCCardExtractor
 from .uob_extractor import UOBOneExtractor, UOBPortfolioExtractor, UOBTxnExtractor
 
 # Lazily populated on first access to avoid circular imports.
@@ -20,7 +20,7 @@ def _build_registry() -> dict[tuple[str, str], type[BaseExtractor]]:
     """Build the extractor registry (imports extractors on first call)."""
     return {
         ("dbs", "consolidated"): DBSExtractor,
-        ("ocbc", "bank"):        OCBCBankExtractor,
+        ("ocbc", "consolidated"):  OCBCConsolidatedExtractor,
         ("ocbc", "card"):        OCRCCardExtractor,
         ("icbc", "statement"):   ICBCExtractor,
         ("uob", "txn"):          UOBTxnExtractor,

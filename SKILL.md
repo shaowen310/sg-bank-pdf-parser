@@ -26,7 +26,7 @@ The script auto-detects the source bank (DBS, OCBC, UOB, ICBC) and the statement
 family via explicit regex rules — **no fallback defaults**:
 
 - **DBS/POSB consolidated** — Account Summary (CASA + FD), SRS with Unit Trusts, multi-account Transaction Details.
-- **OCBC bank account** — multiple accounts, 7-col transaction tables, opening/closing balances, per-section totals.
+- **OCBC consolidated statement** — multiple accounts, 7-col transaction tables, opening/closing balances, per-section totals.
 - **OCBC credit card** — single date column, parenthesized credits, FX `Currency / Amount` column, reconciliation block.
 - **ICBC bilingual** — multi-currency Current + Fixed Deposit accounts, per-currency Dr./Cr. summaries, reminders/notes.
 - **UOB single-account** — 5-col table, `BALANCE B/F` opening, multi-line descriptions.

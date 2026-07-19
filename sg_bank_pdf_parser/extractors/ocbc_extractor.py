@@ -1,6 +1,6 @@
-"""OCBC bank account & credit card → IR extractors.
+"""OCBC consolidated statement & credit card → IR extractors.
 
-Wraps ``ocbc_parser.parse_bank()`` and ``ocbc_parser.parse_card()``.
+Wraps ``ocbc_parser.parse_consolidated()`` and ``ocbc_parser.parse_card()``.
 """
 
 from __future__ import annotations
@@ -37,8 +37,8 @@ def _ocbc_account_type(name: str) -> str:
     return AccountType.UNKNOWN.value
 
 
-class OCBCBankExtractor(BaseExtractor):
-    parser_name: ClassVar[str] = "ocbc_bank"
+class OCBCConsolidatedExtractor(BaseExtractor):
+    parser_name: ClassVar[str] = "ocbc_consolidated"
     parser_version: ClassVar[str] = "1.0"
 
     @classmethod
@@ -54,11 +54,11 @@ class OCBCBankExtractor(BaseExtractor):
     @override
     def to_ir(self, pdf_path: Path) -> ParsedStatement:
         from ..common import PDF
-        from ..parsers.ocbc_parser import parse_bank
+        from ..parsers.ocbc_parser import parse_consolidated
 
         pdf = self._open_pdf(pdf_path)
         try:
-            meta, transactions, time_deposit_rows = parse_bank(cast(PDF, cast(object, pdf)))
+            meta, transactions, time_deposit_rows = parse_consolidated(cast(PDF, cast(object, pdf)))
         finally:
             pdf.close()
 
