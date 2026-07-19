@@ -44,7 +44,7 @@ def test_registry_populated():
     assert get_extractor("dbs", "consolidated") is not None
     assert get_extractor("ocbc", "card") is not None
     assert get_extractor("uob", "one") is not None
-    assert get_extractor("icbc", "statement") is not None
+    assert get_extractor("icbc", "consolidated") is not None
 
 
 def test_masking_runs():

@@ -22,7 +22,7 @@ def _build_registry() -> dict[tuple[str, str], type[BaseExtractor]]:
         ("dbs", "consolidated"): DBSExtractor,
         ("ocbc", "consolidated"):  OCBCConsolidatedExtractor,
         ("ocbc", "card"):        OCRCCardExtractor,
-        ("icbc", "statement"):   ICBCExtractor,
+        ("icbc", "consolidated"):   ICBCExtractor,
         ("uob", "txn"):          UOBTxnExtractor,
         ("uob", "one"):          UOBOneExtractor,
         ("uob", "portfolio"):    UOBPortfolioExtractor,

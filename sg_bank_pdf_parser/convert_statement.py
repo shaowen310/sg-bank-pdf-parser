@@ -48,7 +48,7 @@ def get_renderer(bank: str, family: str):
 
 PARSER_NAME_TO_BANK_FAMILY: dict[str, tuple[str, str]] = {
     "dbs_sg": ("dbs", "consolidated"),
-    "icbc_sg": ("icbc", "statement"),
+    "icbc_sg": ("icbc", "consolidated"),
     "ocbc_consolidated": ("ocbc", "consolidated"),
     "ocbc_card": ("ocbc", "card"),
     "uob_txn": ("uob", "txn"),
@@ -71,7 +71,7 @@ def detect_type(pdf: PDFType) -> tuple[str, str]:
     (bank, family) key is what selects an extractor/renderer:
 
       dbs:    "consolidated"                  (DBS/POSB consolidated statement)
-      icbc:   "statement"                     (ICBC bank account statement)
+      icbc:   "consolidated"                  (ICBC bilingual multi-currency statement)
       ocbc:   "consolidated" | "card"         (OCBC consolidated | OCBC credit card)
       uob:    "txn" | "one" | "portfolio"
               (UOB single-account txn | UOB One multi-account | UOB portfolio summary)
@@ -87,7 +87,7 @@ def detect_type(pdf: PDFType) -> tuple[str, str]:
 
     # ICBC detection
     if "Statement Date 结单日期" in full_text:
-        return ("icbc", "statement")
+        return ("icbc", "consolidated")
 
     # DBS detection — rotated "DBS … POSB" banner down the left margin of page 0.
     dbs = detect_dbs(pdf)

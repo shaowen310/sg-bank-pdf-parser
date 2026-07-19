@@ -882,5 +882,5 @@ MD_RENDERER_REGISTRY: dict[tuple[str, str], Callable[..., str]] = {
     ("uob", "portfolio"): uob_portfolio_ir_to_markdown,
     ("ocbc", "consolidated"): ocbc_consolidated_ir_to_markdown,
     ("ocbc", "card"): ocbc_card_ir_to_markdown,
-    ("icbc", "statement"): icbc_ir_to_markdown,
+    ("icbc", "consolidated"): icbc_ir_to_markdown,
 }
