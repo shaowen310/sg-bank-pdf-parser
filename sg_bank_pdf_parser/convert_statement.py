@@ -94,9 +94,10 @@ def detect_type(pdf: PDFType) -> tuple[str, str]:
     if "Statement Date 结单日期" in full_text:
         return ("icbc", "statement")
 
-    # DBS detection
-    if "Consolidated Statement" in full_text and "Account Summary" in full_text:
-        return ("dbs", "consolidated")
+    # DBS detection — rotated "DBS … POSB" banner down the left margin of page 0.
+    dbs = detect_dbs(pdf)
+    if dbs is not None:
+        return dbs
 
     # OCBC detection — "OCBC Bank" wordmark in the upper-right of page 1.
     ocbc = detect_ocbc(pdf)
@@ -104,6 +105,25 @@ def detect_type(pdf: PDFType) -> tuple[str, str]:
         return ocbc
 
     return ("unknown", "unknown")
+
+
+def detect_dbs(pdf: PDFType) -> tuple[str, str] | None:
+    """Return ``("dbs", "consolidated")`` if page 0 carries DBS/POSB's rotated
+    left-margin banner, otherwise ``None``.
+
+    DBS/POSB prints a vertical (90°-rotated) banner down the left edge of
+    every page — the ``DBS Bank Ltd … POSB …`` strip. Because the text is
+    rotated, pdfplumber yields each word character-reversed (e.g. ``DBS`` ->
+    ``SBD``, ``POSB`` -> ``BSOP``). We collect the low-x words on page 0 and
+    look for that signature. No other supported bank prints rotated text in
+    the left margin, so this is a precise, bank-level signal.
+    """
+    page = pdf.pages[0]
+    left_words = {w["text"] for w in page.extract_words() if w["x0"] < 25}
+    # Rotated forms of "DBS" and "POSB" in the left-margin banner.
+    if "SBD" in left_words and "BSOP" in left_words:
+        return ("dbs", "consolidated")
+    return None
 
 
 def detect_ocbc(pdf: PDFType) -> tuple[str, str] | None:

@@ -142,7 +142,8 @@ source renderers and `references/` (below).
 ## Notes / gotchas
 
 - **Detection is explicit, no fallback.** Order: UOB `Period:` → ICBC
-  `Statement Date 结单日期` → DBS `"Consolidated Statement" + "Account Summary"` →
+  `Statement Date 结单日期` → DBS rotated `"DBS … POSB"` left-margin banner on page 0
+  (`x0 < 25`: `SBD` + `BSOP`, i.e. `DBS` + `POSB` character-reversed by 90° rotation) →
   OCBC `"OCBC Bank"` wordmark in the upper-right of page 1 (region
   `x ≥ 0.5·w`, `y ≤ 0.15·h`); family `card` when page-1 carries
   `PAYMENT DUE … CREDIT LIMIT`, otherwise `bank`. No match → unsupported.

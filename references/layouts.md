@@ -27,7 +27,7 @@ flowchart LR
     B -- Yes --> C[UOB parser]
     B -- No --> D{ICBC?<br/>Statement Date 结单日期}
     D -- Yes --> E[ICBC parser]
-    D -- No --> F{DBS?<br/>Consolidated Statement +<br/>Account Summary}
+    D -- No --> F{DBS?<br/>rotated "DBS … POSB"<br/>left-margin banner<br/>(page 0, x0<25: SBD + BSOP)}
     F -- Yes --> G[DBS/POSB parser]
     F -- No --> H{OCBC?<br/>"OCBC Bank" wordmark<br/>upper-right of page 1}
     H -- Yes --> I[OCBC parser<br/>card if page-1 has<br/>PAYMENT DUE + CREDIT LIMIT,<br/>else bank]
@@ -38,7 +38,7 @@ flowchart LR
 |------|-------------------|----------|
 | **UOB** | `Period: <DD Mon YYYY> to <DD Mon YYYY>` | 1st — most unique |
 | **ICBC** | `Statement Date 结单日期：YYYY/MM/DD` | 2nd — bilingual header, unique |
-| **DBS** | `"Consolidated Statement" + "Account Summary"` (without UOB/OCBC hits) | 3rd — text-based, broad |
+| **DBS** | rotated `"DBS … POSB"` left-margin banner on page 0 (`x0 < 25`: `SBD` + `BSOP`, character-reversed by 90° rotation) | 3rd — precise bank-level signal |
 | **OCBC** | `"OCBC Bank"` wordmark in page-1 upper-right (region `x ≥ 0.5·w`, `y ≤ 0.15·h`); family `card` if page-1 `PAYMENT DUE … CREDIT LIMIT`, else `bank` | 4th — fallback |
 
 This ordering avoids false positives: UOB's `Period:` line is the most

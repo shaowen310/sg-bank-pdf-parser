@@ -19,8 +19,14 @@ Column x-positions (PDF points) measured from a sample DBS/POSB consolidated sta
 ## Detection signature
 
 ```
-"Consolidated Statement" + "Account Summary"   (without UOB "Period:" or OCBC "TRANSACTION DATE")
+Rotated left-margin banner on page 0: "SBD" + "BSOP"   (i.e. "DBS" + "POSB", character-reversed by 90° rotation)
 ```
+
+DBS/POSB prints a vertical (90°-rotated) banner down the left edge of every
+page (`x0 < 25`). pdfplumber yields the rotated words character-reversed, so
+`DBS` appears as `SBD` and `POSB` as `BSOP`. `detect_dbs()` collects the
+low-x words on page 0 and matches both tokens. No other supported bank prints
+rotated text in the left margin, so this is a precise, bank-level signal.
 
 Checked in `detect_type()` after UOB but before OCBC.
 
