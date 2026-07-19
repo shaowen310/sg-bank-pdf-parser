@@ -78,11 +78,13 @@ def detect_type(pdf: PDFType) -> tuple[str, str]:
 
     # UOB detection — uobgroup.com email in the "Contact Us" card.
     if detect_uob(full_text):
-        if "Account Transaction Details" in full_text:
-            if _uob_one_section_count(full_text) > 1:
-                return ("uob", "one")
-            return ("uob", "txn")
-        return ("uob", "portfolio")
+        # Transaction-style statement vs. portfolio summary.
+        if "Account Transaction Details" not in full_text:
+            return ("uob", "portfolio")
+        # UOB One: account section is headed by a "One Account" label.
+        if _uob_has_one_account(full_text):
+            return ("uob", "one")
+        return ("uob", "txn")
 
     # ICBC detection
     if "Statement Date 结单日期" in full_text:
@@ -162,19 +164,26 @@ def detect_uob(full_text: str) -> bool:
     return re.search(r"[A-Za-z0-9._%+-]+@uobgroup\.com", full_text, re.I) is not None
 
 
-def _uob_one_section_count(full_text: str) -> int:
-    """Count distinct account numbers following Account Transaction Details."""
+def _uob_has_one_account(full_text: str) -> bool:
+    """Return True if the statement is a UOB One (multi-account) statement.
+
+    A UOB One statement heads each ``Account Transaction Details`` section with
+    the account label ``One Account`` immediately before the dashed account
+    number (e.g. ``One Account 123-456-789-0``). Single-account transaction
+    statements use a different product label (e.g. ``UOB Stash Account``) and
+    never print ``One Account``, so this keyword reliably distinguishes the two
+    transaction-style families.
+    """
     lines = full_text.splitlines()
-    seen: set[str] = set()
+    acc_re = re.compile(r"\b\d{3}-\d{3}-\d{3}-\d{1,3}\b")
     for i, line in enumerate(lines):
-        if "Account Transaction Details" not in line:
+        if "One Account" not in line:
             continue
-        for j in range(i + 1, min(i + 5, len(lines))):
-            m = re.search(r"\b\d{3}-\d{3}-\d{3}-\d{1,3}\b", lines[j])
-            if m:
-                seen.add(m.group(0))
-                break
-    return len(seen)
+        # Account number on the same line, or within the next 2 lines.
+        for j in range(i, min(i + 3, len(lines))):
+            if acc_re.search(lines[j]):
+                return True
+    return False
 
 
 # ----------------------------------------------------------------------------
