@@ -15,9 +15,9 @@ This repository is both:
 
 | Bank | Families |
 | --- | --- |
-| DBS / POSB | Consolidated (Account Summary + multi-account Transaction Details, SRS w/ Unit Trusts) |
-| OCBC | Bank account (7-col) · Credit card |
-| ICBC | Bilingual multi-currency Current + Fixed Deposit |
+| DBS / POSB | Consolidated (Account Summary + multi-account Transaction Details, Fixed Deposits, etc.) |
+| OCBC | Consolidated (Account Summary + multi-account Transaction Details, Fixed Deposits, etc.) · Credit card |
+| ICBC | Consolidated (Account Summary + multi-account Transaction Details, Fixed Deposits, etc.) |
 | UOB | Single-account · One multi-account · Multi-account portfolio |
 
 Detection is **explicit** (regex rules per family) with **no fallback** — an

@@ -134,7 +134,7 @@ def detect_ocbc(pdf: PDFType) -> tuple[str, str] | None:
       * ``card`` — credit-card statements expose ``PAYMENT DUE`` /
         ``CREDIT LIMIT`` on page 1 (e.g. the payment-due-date and
         credit-limit summary block).
-      * ``bank`` — everything else (consolidated / savings account statements).
+      * ``consolidated`` — everything else (consolidated / savings account statements).
     """
     page = pdf.pages[0]
     w, h = page.width, page.height
