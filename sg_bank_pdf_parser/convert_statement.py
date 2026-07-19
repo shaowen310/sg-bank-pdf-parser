@@ -77,14 +77,9 @@ def detect_type(pdf: PDFType) -> tuple[str, str]:
         full_text += "\n" + (page.extract_text() or "")
 
     # UOB detection — uobgroup.com email in the "Contact Us" card.
-    if detect_uob(full_text):
-        # Transaction-style statement vs. portfolio summary.
-        if "Account Transaction Details" not in full_text:
-            return ("uob", "portfolio")
-        # UOB One: account section is headed by a "One Account" label.
-        if _uob_has_one_account(full_text):
-            return ("uob", "one")
-        return ("uob", "txn")
+    uob = detect_uob(pdf)
+    if uob is not None:
+        return uob
 
     # ICBC detection
     if "Statement Date 结单日期" in full_text:
@@ -152,16 +147,36 @@ def detect_ocbc(pdf: PDFType) -> tuple[str, str] | None:
     return ("ocbc", "bank")
 
 
-def detect_uob(full_text: str) -> bool:
-    """Return ``True`` if the statement is a UOB statement.
+def detect_uob(pdf: PDFType) -> tuple[str, str] | None:
+    """Return ``("uob", family)`` if the statement is a UOB statement, else ``None``.
 
     UOB prints a "Contact Us" card (typically on the last page) that includes a
     UOB Group email address whose domain is always ``uobgroup.com``. No other
     supported bank emits that domain, so it is a precise, bank-level signal. We
     match any email of the form ``<local>@uobgroup.com`` (case-insensitive)
     across the whole document.
+
+    Family is then decided from the document content:
+      * ``portfolio`` — statements with no ``Account Transaction Details`` block
+        (a portfolio summary rather than an account transaction listing).
+      * ``one`` — multi-account statements that head each transaction section
+        with the ``One Account`` label.
+      * ``txn`` — everything else (single-account transaction-style statements).
     """
-    return re.search(r"[A-Za-z0-9._%+-]+@uobgroup\.com", full_text, re.I) is not None
+    full_text = ""
+    for page in pdf.pages:
+        full_text += "\n" + (page.extract_text() or "")
+
+    if re.search(r"[A-Za-z0-9._%+-]+@uobgroup\.com", full_text, re.I) is None:
+        return None
+
+    # Transaction-style statement vs. portfolio summary.
+    if "Account Transaction Details" not in full_text:
+        return ("uob", "portfolio")
+    # UOB One: account section is headed by a "One Account" label.
+    if _uob_has_one_account(full_text):
+        return ("uob", "one")
+    return ("uob", "txn")
 
 
 def _uob_has_one_account(full_text: str) -> bool:
