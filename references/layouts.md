@@ -29,7 +29,9 @@ flowchart LR
     D -- Yes --> E[ICBC parser]
     D -- No --> F{DBS?<br/>Consolidated Statement +<br/>Account Summary}
     F -- Yes --> G[DBS/POSB parser]
-    F -- No --> H[OCBC parser]
+    F -- No --> H{OCBC?<br/>"OCBC Bank" wordmark<br/>upper-right of page 1}
+    H -- Yes --> I[OCBC parser<br/>card if page-1 has<br/>PAYMENT DUE + CREDIT LIMIT,<br/>else bank]
+    H -- No --> J[Unsupported]
 ```
 
 | Bank | Detection Signature | Priority |
@@ -37,10 +39,12 @@ flowchart LR
 | **UOB** | `Period: <DD Mon YYYY> to <DD Mon YYYY>` | 1st — most unique |
 | **ICBC** | `Statement Date 结单日期：YYYY/MM/DD` | 2nd — bilingual header, unique |
 | **DBS** | `"Consolidated Statement" + "Account Summary"` (without UOB/OCBC hits) | 3rd — text-based, broad |
-| **OCBC** | `STATEMENT SAVINGS` / `360 ACCOUNT` / `TRANSACTION DATE` | 4th — fallback |
+| **OCBC** | `"OCBC Bank"` wordmark in page-1 upper-right (region `x ≥ 0.5·w`, `y ≤ 0.15·h`); family `card` if page-1 `PAYMENT DUE … CREDIT LIMIT`, else `bank` | 4th — fallback |
 
 This ordering avoids false positives: UOB's `Period:` line is the most
-unambiguous, while OCBC keywords are common enough to be a fallback.
+unambiguous, while OCBC is matched by its `OCBC Bank` wordmark in the top-right
+corner of page 1 — a precise signal that no other supported bank emits there,
+so it remains a safe fallback.
 
 ## Placeholder Reference
 

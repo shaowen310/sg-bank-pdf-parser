@@ -98,15 +98,42 @@ def detect_type(pdf: PDFType) -> tuple[str, str]:
     if "Consolidated Statement" in full_text and "Account Summary" in full_text:
         return ("dbs", "consolidated")
 
-    # OCBC detection.
-    for page in pdf.pages:
-        text = page.extract_text() or ""
-        if "TRANSACTION DATE" in text and "AMOUNT (SGD)" in text:
-            return ("ocbc", "card")
-        if "Cheque" in text and "Withdrawal" in text and "Deposit" in text and "Balance" in text:
-            return ("ocbc", "bank")
+    # OCBC detection — "OCBC Bank" wordmark in the upper-right of page 1.
+    ocbc = detect_ocbc(pdf)
+    if ocbc is not None:
+        return ocbc
 
     return ("unknown", "unknown")
+
+
+def detect_ocbc(pdf: PDFType) -> tuple[str, str] | None:
+    """Return ``("ocbc", family)`` if page 1 carries the OCBC Bank wordmark in
+    its upper-right corner, otherwise ``None``.
+
+    The wordmark (``OCBC Bank`` beside the Chulia Street address) sits in the
+    top-right quadrant of page 1 for both OCBC bank and credit-card statements,
+    and no other supported bank prints ``OCBC Bank`` there — so this is a
+    precise, bank-level signal that pre-empts the weaker table-header heuristics.
+
+    Family is then decided from page-1 content:
+      * ``card`` — credit-card statements expose ``PAYMENT DUE`` /
+        ``CREDIT LIMIT`` on page 1 (e.g. the payment-due-date and
+        credit-limit summary block).
+      * ``bank`` — everything else (consolidated / savings account statements).
+    """
+    page = pdf.pages[0]
+    w, h = page.width, page.height
+
+    # Upper-right region: right half, top 15% of page height.
+    region = page.crop((0.5 * w, 0, w, 0.15 * h))
+    region_text = (region.extract_text() or "").lower()
+    if "ocbc bank" not in region_text:
+        return None
+
+    full_page = (page.extract_text() or "").lower()
+    if "payment due" in full_page and "credit limit" in full_page:
+        return ("ocbc", "card")
+    return ("ocbc", "bank")
 
 
 def _uob_one_section_count(full_text: str) -> int:

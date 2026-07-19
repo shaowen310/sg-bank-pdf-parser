@@ -143,8 +143,9 @@ source renderers and `references/` (below).
 
 - **Detection is explicit, no fallback.** Order: UOB `Period:` → ICBC
   `Statement Date 结单日期` → DBS `"Consolidated Statement" + "Account Summary"` →
-  OCBC card `TRANSACTION DATE … AMOUNT (SGD)` → OCBC bank
-  `Cheque … Withdrawal … Deposit … Balance`. No match → unsupported.
+  OCBC `"OCBC Bank"` wordmark in the upper-right of page 1 (region
+  `x ≥ 0.5·w`, `y ≤ 0.15·h`); family `card` when page-1 carries
+  `PAYMENT DUE … CREDIT LIMIT`, otherwise `bank`. No match → unsupported.
 - **OCBC rotated margin banner** bleeds into data lines; must be filtered.
 - **DBS sidebar noise** (rotated left-margin text, x0 ≈ 11) filtered per page.
 - **Right-aligned numeric columns:** classify by x1 edge, not text order.
