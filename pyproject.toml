@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sg_bank_pdf_parser"
+version = "0.1.0"
+description = "Parse Singapore bank statement PDFs (DBS, OCBC, UOB, ICBC) into structured IR and Markdown"
+requires-python = ">=3.12"
+dependencies = ["pdfplumber>=0.10"]
+
+[project.scripts]
+sgbankpdf = "sg_bank_pdf_parser.convert_statement:main"
+
+[tool.setuptools.packages.find]
+include = ["sg_bank_pdf_parser*"]
