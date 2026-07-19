@@ -64,13 +64,17 @@ PARSER_NAME_TO_BANK_FAMILY: dict[str, tuple[str, str]] = {
 def detect_type(pdf: PDFType) -> tuple[str, str]:
     """Return a (bank, family) tuple.
 
-    bank:   "dbs", "uob", "icbc", or "ocbc"
-    family: "consolidated" (DBS consolidated statement),
-            "txn" (UOB single-account transaction-style),
-            "one" (UOB One multi-account transaction-style),
-            "portfolio" (UOB portfolio summary),
-            "statement" (ICBC bank account statement),
-            "card" (OCBC credit card), "consolidated" (OCBC consolidated statement).
+    ``bank`` is one of: "dbs", "uob", "icbc", "ocbc".
+
+    The family value is bank-scoped -- the same label may recur across banks
+    (e.g. "consolidated" is used by both DBS and OCBC), so the full
+    (bank, family) key is what selects an extractor/renderer:
+
+      dbs:    "consolidated"                  (DBS/POSB consolidated statement)
+      icbc:   "statement"                     (ICBC bank account statement)
+      ocbc:   "consolidated" | "card"         (OCBC consolidated | OCBC credit card)
+      uob:    "txn" | "one" | "portfolio"
+              (UOB single-account txn | UOB One multi-account | UOB portfolio summary)
     """
     full_text: str = ""
     for page in pdf.pages:
