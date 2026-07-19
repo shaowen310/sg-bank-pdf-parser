@@ -1,7 +1,5 @@
 # ICBC (Industrial and Commercial Bank of China) — Statement Layout Reference
 
-> Detection order: **2nd** (UOB → **ICBC** → DBS → OCBC)
-
 ## Detection Signature
 
 ICBC statements are detected by the unique bilingual header line:
@@ -10,7 +8,7 @@ ICBC statements are detected by the unique bilingual header line:
 Statement Date 结单日期：YYYY/MM/DD
 ```
 
-This signature appears on page 1 and is checked **after** UOB detection (which uses the `Period:` line) but **before** DBS detection (which shares the `Account Summary` keyword with ICBC).
+This signature appears on page 1. It is a unique, bank-level signal — no other supported bank prints the bilingual `Statement Date 结单日期` header.
 
 ## Page Structure
 

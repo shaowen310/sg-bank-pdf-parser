@@ -141,12 +141,14 @@ source renderers and `references/` (below).
 
 ## Notes / gotchas
 
-- **Detection is explicit, no fallback.** Order: UOB `uobgroup.com` email in "Contact Us" card → ICBC
-  `Statement Date 结单日期` → DBS rotated `"DBS … POSB"` left-margin banner on page 0
-  (`x0 < 25`: `SBD` + `BSOP`, i.e. `DBS` + `POSB` character-reversed by 90° rotation) →
-  OCBC `"OCBC Bank"` wordmark in the upper-right of page 1 (region
-  `x ≥ 0.5·w`, `y ≤ 0.15·h`); family `card` when page-1 carries
-  `PAYMENT DUE … CREDIT LIMIT`, otherwise `bank`. No match → unsupported.
+- **Detection is explicit and order-independent.** Each bank is identified by a unique,
+  mutually-exclusive signal (no fallback, no priority): UOB via `uobgroup.com` email in
+  the "Contact Us" card; ICBC via `Statement Date 结单日期`; DBS via the rotated
+  `"DBS … POSB"` left-margin banner on page 0 (`x0 < 25`: `SBD` + `BSOP`, i.e. `DBS` +
+  `POSB` character-reversed by 90° rotation); OCBC via the `"OCBC Bank"` wordmark in the
+  upper-right of page 1 (region `x ≥ 0.5·w`, `y ≤ 0.15·h`), family `card` when page-1
+  carries `PAYMENT DUE … CREDIT LIMIT`, otherwise `bank`. A PDF can match at most one
+  detector, so the order of the `if` chain in `detect_type()` is irrelevant. No match → unsupported.
 - **OCBC rotated margin banner** bleeds into data lines; must be filtered.
 - **DBS sidebar noise** (rotated left-margin text, x0 ≈ 11) filtered per page.
 - **Right-aligned numeric columns:** classify by x1 edge, not text order.

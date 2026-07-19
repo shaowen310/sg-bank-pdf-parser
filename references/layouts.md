@@ -15,36 +15,39 @@ systems, and parsing quirks.
 
 ## Detection Flow
 
-The detection order (corresponding to `convert_statement.py:detect_type()`) is:
-
-```
-UOB → ICBC → DBS → OCBC
-```
+Detection is **order-independent**: each bank is identified by a unique,
+mutually-exclusive signal (see `convert_statement.py:detect_type()`), so exactly
+one detector can match a given PDF. The four checks are independent and can be
+evaluated in any order — the `UOB → ICBC → DBS → OCBC` sequence in the code is just
+a short-circuit convention, not a functional dependency.
 
 ```mermaid
 flowchart LR
-    A[PDF Input] --> B{UOB?<br/>uobgroup.com email<br/>(Contact Us card)}
+    A[PDF Input]
+    A --> B{UOB?<br/>uobgroup.com email<br/>(Contact Us card)}
+    A --> D{ICBC?<br/>Statement Date 结单日期}
+    A --> F{DBS?<br/>rotated "DBS … POSB"<br/>left-margin banner<br/>(page 0, x0<25: SBD + BSOP)}
+    A --> H{OCBC?<br/>"OCBC Bank" wordmark<br/>upper-right of page 1}
     B -- Yes --> C[UOB parser]
-    B -- No --> D{ICBC?<br/>Statement Date 结单日期}
     D -- Yes --> E[ICBC parser]
-    D -- No --> F{DBS?<br/>rotated "DBS … POSB"<br/>left-margin banner<br/>(page 0, x0<25: SBD + BSOP)}
     F -- Yes --> G[DBS/POSB parser]
-    F -- No --> H{OCBC?<br/>"OCBC Bank" wordmark<br/>upper-right of page 1}
     H -- Yes --> I[OCBC parser<br/>card if page-1 has<br/>PAYMENT DUE + CREDIT LIMIT,<br/>else bank]
-    H -- No --> J[Unsupported]
+    B -- No --> J[Unsupported]
+    D -- No --> J
+    F -- No --> J
+    H -- No --> J
 ```
 
-| Bank | Detection Signature | Priority |
-|------|-------------------|----------|
-| **UOB** | `uobgroup.com` email in the "Contact Us" card (any page); `Period:` is consumed by the parser for date extraction, not detection | 1st — most unique |
-| **ICBC** | `Statement Date 结单日期：YYYY/MM/DD` | 2nd — bilingual header, unique |
-| **DBS** | rotated `"DBS … POSB"` left-margin banner on page 0 (`x0 < 25`: `SBD` + `BSOP`, character-reversed by 90° rotation) | 3rd — precise bank-level signal |
-| **OCBC** | `"OCBC Bank"` wordmark in page-1 upper-right (region `x ≥ 0.5·w`, `y ≤ 0.15·h`); family `card` if page-1 `PAYMENT DUE … CREDIT LIMIT`, else `bank` | 4th — fallback |
+| Bank | Detection Signature |
+|------|-------------------|
+| **UOB** | `uobgroup.com` email in the "Contact Us" card (any page); `Period:` is consumed by the parser for date extraction, not detection |
+| **ICBC** | `Statement Date 结单日期：YYYY/MM/DD` |
+| **DBS** | rotated `"DBS … POSB"` left-margin banner on page 0 (`x0 < 25`: `SBD` + `BSOP`, character-reversed by 90° rotation) |
+| **OCBC** | `"OCBC Bank"` wordmark in page-1 upper-right (region `x ≥ 0.5·w`, `y ≤ 0.15·h`); family `card` if page-1 `PAYMENT DUE … CREDIT LIMIT`, else `bank` |
 
-This ordering avoids false positives: UOB's `uobgroup.com` Contact-Us email is the most
-unambiguous, while OCBC is matched by its `OCBC Bank` wordmark in the top-right
-corner of page 1 — a precise signal that no other supported bank emits there,
-so it remains a safe fallback.
+Because each signal is bank-exclusive, a PDF can match at most one detector — no
+priority or fallback is needed. If none of the four signals is present, the PDF
+is reported as unsupported.
 
 ## Placeholder Reference
 

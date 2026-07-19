@@ -1,7 +1,5 @@
 # DBS/POSB Consolidated Statement Layout Reference
 
-> Detection order: **3rd** (UOB → ICBC → **DBS** → OCBC)
-
 Column x-positions (PDF points) measured from a sample DBS/POSB consolidated statement PDF.
 
 ## Statement pages (7 total)
@@ -27,8 +25,6 @@ page (`x0 < 25`). pdfplumber yields the rotated words character-reversed, so
 `DBS` appears as `SBD` and `POSB` as `BSOP`. `detect_dbs()` collects the
 low-x words on page 0 and matches both tokens. No other supported bank prints
 rotated text in the left margin, so this is a precise, bank-level signal.
-
-Checked in `detect_type()` after UOB but before OCBC.
 
 ## Account Summary (page 0)
 

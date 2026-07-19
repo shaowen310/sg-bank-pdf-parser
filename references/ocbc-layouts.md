@@ -1,7 +1,5 @@
 # OCBC Statement PDF Layouts
 
-> Detection order: **4th** (fallback — matched when UOB, ICBC, and DBS all fail)
-
 This reference documents the empirically-determined structure of OCBC PDF
 statements needed to parse them reliably. Coordinates are in PDF points
 (1 pt = 1/72 inch). They are stable across statements of the same product

@@ -1,7 +1,5 @@
 # UOB Statement PDF Layouts
 
-> Detection order: **1st** (checked before ICBC, DBS, and OCBC)
->
 > **Bank-level detection:** UOB is identified by a `uobgroup.com` email address
 > in its "Contact Us" card (any page) — see `convert_statement.py:detect_uob()`.
 
