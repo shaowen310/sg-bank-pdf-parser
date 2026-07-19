@@ -141,7 +141,7 @@ source renderers and `references/` (below).
 
 ## Notes / gotchas
 
-- **Detection is explicit, no fallback.** Order: UOB `Period:` → ICBC
+- **Detection is explicit, no fallback.** Order: UOB `uobgroup.com` email in "Contact Us" card → ICBC
   `Statement Date 结单日期` → DBS rotated `"DBS … POSB"` left-margin banner on page 0
   (`x0 < 25`: `SBD` + `BSOP`, i.e. `DBS` + `POSB` character-reversed by 90° rotation) →
   OCBC `"OCBC Bank"` wordmark in the upper-right of page 1 (region

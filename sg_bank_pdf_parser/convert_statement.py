@@ -76,14 +76,8 @@ def detect_type(pdf: PDFType) -> tuple[str, str]:
     for page in pdf.pages:
         full_text += "\n" + (page.extract_text() or "")
 
-    # UOB detection — must be checked before DBS/OCBC, because both share the
-    # "Statement of Account" header on page 0, and DBS uses "Consolidated
-    # Statement" which also appears in OCBC.
-    is_uob = "Period:" in full_text and re.search(
-        r"Period:\s*\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+to\s+\d{1,2}\s+[A-Za-z]{3}\s+\d{4}",
-        full_text,
-    ) is not None
-    if is_uob:
+    # UOB detection — uobgroup.com email in the "Contact Us" card.
+    if detect_uob(full_text):
         if "Account Transaction Details" in full_text:
             if _uob_one_section_count(full_text) > 1:
                 return ("uob", "one")
@@ -154,6 +148,18 @@ def detect_ocbc(pdf: PDFType) -> tuple[str, str] | None:
     if "payment due" in full_page and "credit limit" in full_page:
         return ("ocbc", "card")
     return ("ocbc", "bank")
+
+
+def detect_uob(full_text: str) -> bool:
+    """Return ``True`` if the statement is a UOB statement.
+
+    UOB prints a "Contact Us" card (typically on the last page) that includes a
+    UOB Group email address whose domain is always ``uobgroup.com``. No other
+    supported bank emits that domain, so it is a precise, bank-level signal. We
+    match any email of the form ``<local>@uobgroup.com`` (case-insensitive)
+    across the whole document.
+    """
+    return re.search(r"[A-Za-z0-9._%+-]+@uobgroup\.com", full_text, re.I) is not None
 
 
 def _uob_one_section_count(full_text: str) -> int:

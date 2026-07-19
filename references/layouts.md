@@ -23,7 +23,7 @@ UOB → ICBC → DBS → OCBC
 
 ```mermaid
 flowchart LR
-    A[PDF Input] --> B{UOB?<br/>Period: line}
+    A[PDF Input] --> B{UOB?<br/>uobgroup.com email<br/>(Contact Us card)}
     B -- Yes --> C[UOB parser]
     B -- No --> D{ICBC?<br/>Statement Date 结单日期}
     D -- Yes --> E[ICBC parser]
@@ -36,12 +36,12 @@ flowchart LR
 
 | Bank | Detection Signature | Priority |
 |------|-------------------|----------|
-| **UOB** | `Period: <DD Mon YYYY> to <DD Mon YYYY>` | 1st — most unique |
+| **UOB** | `uobgroup.com` email in the "Contact Us" card (any page); `Period:` is consumed by the parser for date extraction, not detection | 1st — most unique |
 | **ICBC** | `Statement Date 结单日期：YYYY/MM/DD` | 2nd — bilingual header, unique |
 | **DBS** | rotated `"DBS … POSB"` left-margin banner on page 0 (`x0 < 25`: `SBD` + `BSOP`, character-reversed by 90° rotation) | 3rd — precise bank-level signal |
 | **OCBC** | `"OCBC Bank"` wordmark in page-1 upper-right (region `x ≥ 0.5·w`, `y ≤ 0.15·h`); family `card` if page-1 `PAYMENT DUE … CREDIT LIMIT`, else `bank` | 4th — fallback |
 
-This ordering avoids false positives: UOB's `Period:` line is the most
+This ordering avoids false positives: UOB's `uobgroup.com` Contact-Us email is the most
 unambiguous, while OCBC is matched by its `OCBC Bank` wordmark in the top-right
 corner of page 1 — a precise signal that no other supported bank emits there,
 so it remains a safe fallback.

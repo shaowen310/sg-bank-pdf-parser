@@ -1,6 +1,9 @@
 # UOB Statement PDF Layouts
 
 > Detection order: **1st** (checked before ICBC, DBS, and OCBC)
+>
+> **Bank-level detection:** UOB is identified by a `uobgroup.com` email address
+> in its "Contact Us" card (any page) — see `convert_statement.py:detect_uob()`.
 
 This reference documents the empirically-determined structure of UOB PDF
 statements needed to parse them reliably. Coordinates are in PDF points
@@ -29,7 +32,8 @@ appears in the source PDF; the script's output shows only the masked form
 
 ## 1. UOB Single-Account Transaction Statement (eStatement\_\<acct\>\_\<YYYYMM\>.pdf)
 
-A `Period: <start> to <end>` line is the unique UOB signature. One account
+A `Period: <start> to <end>` line is present; it is consumed by the parser for
+period/date extraction (not used for bank detection). One account
 per file; the transactions are on the second page under the
 `Account Transaction Details` heading.
 
@@ -116,7 +120,8 @@ UOB account numbers are dashed (`<UOB_ACC_NO>` → e.g. `XXX-XXX-XXX-X`).
 
 ## 2. UOB Multi-Account Portfolio Summary (eStatement\_\<YYYYMM\>.pdf)
 
-A `Period: <start> to <end>` line is the unique UOB signature. The
+A `Period: <start> to <end>` line is present; the parser uses it for
+period/date extraction (not bank detection). The
 `Portfolio Overview` and `Account Overview` variants share the same structure;
 they differ only in the section heading. The deposits and investments tables
 have no per-transaction rows — they are summary/holdings only.
@@ -248,7 +253,8 @@ parsed in full.
 
 ## 3. UOB One Multi-Account Transaction Statement (eStatement\_\<YYYYMM\>\_\<acct\>.pdf)
 
-A `Period: <start> to <end>` line is the unique UOB signature. The statement
+A `Period: <start> to <end>` line is present; the parser uses it for
+period/date extraction (not bank detection). The statement
 contains a page-zero Account Overview followed by many `Account Transaction
 Details` sections (one per currency sub-account). Each section has its own
 `BALANCE B/F`, transaction rows, and `Total` line. The same account may span
