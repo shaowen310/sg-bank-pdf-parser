@@ -1081,9 +1081,3 @@ def _normalize_dates(accounts: list[dict[str, Any]]) -> None:
                 t["txn_date"] = f"{y}-{m}-{d}"
             except (ValueError, AttributeError):
                 pass
-
-
-# ============================================================================
-# Markdown renderer
-# ============================================================================
-

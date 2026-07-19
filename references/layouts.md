@@ -64,6 +64,7 @@ anywhere a placeholder appears in this document it should be read as
 | `<UOB_ACC_NO>` | UOB | Account number (dashed) | `\b\d{3}-\d{3}-\d{3}-\d{1,3}\b` | `XXX-XXX-XXX-X` |
 | `<UOB_PERIOD>` | UOB | Statement period | `Period:\s*(\d{1,2}\s+\w{3}\s+\d{4}\s+to\s+\d{1,2}\s+\w{3}\s+\d{4})` | `Period: 01 Jun 2026 to 30 Jun 2026` |
 | `<DBS_ACCT_NO>` | DBS | Account number (various dash formats) | `\b\d{1,4}[-.]\d{1,8}[-.]\d{1,8}([-.]\d{1,8})?\b` | `NNN-N-NNNNNN` |
+| `[acct_no] / [fd_acct_no]` | ICBC | ICBC account number (Current / Fixed Deposit) | literal placeholder in source PDF text layer; masked to last 4 digits | `[acct_no]` |
 
 ### Sensitive Number Masking
 
@@ -72,7 +73,8 @@ time-deposit deposit numbers, and credit card numbers) are **masked** in the
 rendered Markdown: only the last 4 digits are kept, every other digit is
 replaced with `X`. The example matches above show the full un-masked value as
 it appears in the source PDF; the script's output shows only the masked form
-(e.g. `XXXXXXXXXX3456`).
+(e.g. `XXXXXXXXXX3456`). Person names that appear in transaction descriptions
+are fully replaced with `[NAME]`.
 
 ## Parsing Strategies by Bank
 

@@ -7,6 +7,27 @@ family, but may shift slightly between product families — re-measure with
 `pdfplumber` `extract_words` if a new product family produces empty/garbled
 output.
 
+## Detection Signature
+
+OCBC statements are detected by the `OCBC Bank` wordmark in the upper-right
+corner of page 1:
+
+```
+OCBC Bank
+```
+
+`detect_ocbc()` crops the top-right quadrant of page 1 (right half, top 15%:
+`page.crop((0.5*w, 0, w, 0.15*h))`) and matches the substring `OCBC Bank`.
+Both OCBC bank and credit-card statements carry this wordmark (beside the
+Chulia Street address), and no other supported bank prints `OCBC Bank` in
+that region — so it is a precise, bank-level signal that pre-empts the weaker
+table-header heuristics.
+
+Family is decided from page-1 content:
+
+* `card` — credit-card statements expose `PAYMENT DUE` / `CREDIT LIMIT` on page 1.
+* `consolidated` — everything else (consolidated / savings account statements).
+
 ## Placeholder Reference
 
 The parser and examples below use these placeholders in place of any
@@ -20,11 +41,9 @@ as "the real value that satisfies the rule".
 | `<CARD_TYPE>`  | Credit card product name (all caps) | `[A-Z][A-Z\s]+`                  | `OCBC VISA PLATINUM` |
 | `<CARD_NO>`    | OCBC credit card number (printed) | `\d{4}-\d{4}-\d{4}-\d{4}`         | `NNNN-NNNN-NNNN-NNNN`  |
 
-Sensitive numbers (bank account numbers, credit card numbers) are **masked**
-in the rendered Markdown: only the last 4 digits are kept, every other digit
-is replaced with `X`. The example matches above show the full un-masked value
-as it appears in the source PDF; the script's output shows only the masked
-form (e.g. `XXXXXXXXXX3456`).
+> Sensitive numbers are masked to the last 4 digits in the rendered Markdown.
+> See the central [Sensitive Number Masking](./layouts.md#sensitive-number-masking)
+> section for the full masking rules.
 
 ## 1. Bank Account Statement ("Statement of Account" / "Consolidated Statement")
 

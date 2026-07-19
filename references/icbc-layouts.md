@@ -1,4 +1,11 @@
-# ICBC (Industrial and Commercial Bank of China) — Statement Layout Reference
+# ICBC (Industrial and Commercial Bank of China) Statement PDF Layouts
+
+This reference documents the empirically-determined structure of ICBC bilingual
+PDF statements needed to parse them reliably. ICBC statements are parsed from the
+text layer (`extract_text()` + regex) rather than word coordinates, so this
+document describes text anchors and label patterns instead of x/y bands.
+Structure is stable across statements of the same product family, but verify
+against a new product family if extraction yields empty/garbled output.
 
 ## Detection Signature
 
@@ -9,6 +16,22 @@ Statement Date 结单日期：YYYY/MM/DD
 ```
 
 This signature appears on page 1. It is a unique, bank-level signal — no other supported bank prints the bilingual `Statement Date 结单日期` header.
+
+## Placeholder Reference
+
+ICBC redacts account numbers directly in the source PDF text layer as the
+literal placeholders below. They appear verbatim in `extract_text()` output and
+need no regex matching rule — the parser keeps only the last 4 digits of the real
+value (see masking rules).
+
+| Placeholder | Real-world meaning | Example match |
+|-------------|--------------------|---------------|
+| `[acct_no]` | ICBC account number (Current Account) | `[acct_no]` |
+| `[fd_acct_no]` | ICBC account number (Fixed Deposit Account) | `[fd_acct_no]` |
+
+> Sensitive numbers (and person names in transaction descriptions) are masked in
+> the rendered Markdown. See the central [Sensitive Number Masking](./layouts.md#sensitive-number-masking)
+> section for the full masking rules.
 
 ## Page Structure
 

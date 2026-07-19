@@ -1,14 +1,31 @@
 # UOB Statement PDF Layouts
 
-> **Bank-level detection:** UOB is identified by a `uobgroup.com` email address
-> in its "Contact Us" card (any page) — see `convert_statement.py:detect_uob()`.
-
 This reference documents the empirically-determined structure of UOB PDF
 statements needed to parse them reliably. Coordinates are in PDF points
 (1 pt = 1/72 inch). They are stable across statements of the same product
 family, but may shift slightly between product families — re-measure with
 `pdfplumber` `extract_words` if a new product family produces empty/garbled
 output.
+
+## Detection Signature
+
+UOB statements are detected by a `uobgroup.com` email address in the
+"Contact Us" card (any page):
+
+```
+<anything>@uobgroup.com
+```
+
+`detect_uob()` scans the full document text for an email of the form
+`[A-Za-z0-9._%+-]+@uobgroup.com` (case-insensitive). No other supported bank
+emits that domain, so it is a precise, bank-level signal. (The `Period:` line
+is consumed for date extraction, not for detection.)
+
+Family is decided from the document content:
+
+* `portfolio` — statements with no `Account Transaction Details` block (a portfolio summary, not a transaction listing).
+* `one` — multi-account statements that head each transaction section with the `One Account` label.
+* `txn` — everything else (single-account transaction-style statements).
 
 ## Placeholder Reference
 
@@ -22,11 +39,9 @@ as "the real value that satisfies the rule".
 | `<UOB_ACC_NO>` | UOB account number (dashed)         | `\b\d{3}-\d{3}-\d{3}-\d{1,3}\b`     | `XXX-XXX-XXX-X`                              |
 | `<UOB_PERIOD>` | UOB statement period                | `Period:\s*(\d{1,2}\s+\w{3}\s+\d{4}\s+to\s+\d{1,2}\s+\w{3}\s+\d{4})` | `Period: 01 Jun 2026 to 30 Jun 2026` |
 
-Sensitive numbers (bank account numbers) are **masked** in the rendered
-Markdown: only the last 4 digits are kept, every other digit is replaced
-with `X`. The example matches above show the full un-masked value as it
-appears in the source PDF; the script's output shows only the masked form
-(e.g. `XXXXXXX0000`).
+> Sensitive numbers are masked to the last 4 digits in the rendered Markdown.
+> See the central [Sensitive Number Masking](./layouts.md#sensitive-number-masking)
+> section for the full masking rules.
 
 ## 1. UOB Single-Account Transaction Statement (eStatement\_\<acct\>\_\<YYYYMM\>.pdf)
 

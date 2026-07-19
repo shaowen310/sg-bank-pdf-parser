@@ -1,6 +1,41 @@
-# DBS/POSB Consolidated Statement Layout Reference
+# DBS/POSB Consolidated Statement PDF Layouts
 
-Column x-positions (PDF points) measured from a sample DBS/POSB consolidated statement PDF.
+This reference documents the empirically-determined structure of DBS/POSB
+consolidated PDF statements needed to parse them reliably. Coordinates are in
+PDF points (1 pt = 1/72 inch). They are stable across statements of the same
+product family, but may shift slightly between product families — re-measure
+with `pdfplumber` `extract_words` if a new product family produces empty/garbled
+output. Column x-positions below are measured from a sample consolidated
+statement PDF.
+
+## Detection Signature
+
+```
+Rotated left-margin banner on page 0: "SBD" + "BSOP"   (i.e. "DBS" + "POSB", character-reversed by 90° rotation)
+```
+
+DBS/POSB prints a vertical (90°-rotated) banner down the left edge of every
+page (`x0 < 25`). pdfplumber yields the rotated words character-reversed, so
+`DBS` appears as `SBD` and `POSB` as `BSOP`. `detect_dbs()` collects the
+low-x words on page 0 and matches both tokens. No other supported bank prints
+rotated text in the left margin, so this is a precise, bank-level signal.
+
+DBS detection always resolves to the `consolidated` family — there is no
+family branching.
+
+## Placeholder Reference
+
+This document uses the following placeholder in place of any real account data.
+It has a single canonical matching rule; anywhere it appears it should be read
+as "the real value that satisfies the rule".
+
+| Placeholder | Real-world meaning | Matching rule (regex) | Example match |
+|-------------|--------------------|-----------------------|---------------|
+| `<DBS_ACCT_NO>` | DBS account number (various dash formats) | `\b\d{1,4}[-.]\d{1,8}[-.]\d{1,8}([-.]\d{1,8})?\b` | `NNN-N-NNNNNN` |
+
+> Sensitive numbers are masked to the last 4 digits in the rendered Markdown.
+> See the central [Sensitive Number Masking](./layouts.md#sensitive-number-masking)
+> section for the full masking rules.
 
 ## Statement pages (7 total)
 
@@ -13,18 +48,6 @@ Column x-positions (PDF points) measured from a sample DBS/POSB consolidated sta
 | 4 | Transaction Details — Fixed Deposit (cont'd), SRS Account |
 | 5 | Messages For You (informational, not parsed) |
 | 6 | Terms / QR code (informational, not parsed) |
-
-## Detection signature
-
-```
-Rotated left-margin banner on page 0: "SBD" + "BSOP"   (i.e. "DBS" + "POSB", character-reversed by 90° rotation)
-```
-
-DBS/POSB prints a vertical (90°-rotated) banner down the left edge of every
-page (`x0 < 25`). pdfplumber yields the rotated words character-reversed, so
-`DBS` appears as `SBD` and `POSB` as `BSOP`. `detect_dbs()` collects the
-low-x words on page 0 and matches both tokens. No other supported bank prints
-rotated text in the left margin, so this is a precise, bank-level signal.
 
 ## Account Summary (page 0)
 
