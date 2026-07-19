@@ -295,17 +295,18 @@ def main() -> None:
         _ = render_ir_to_md(ir, out_path, do_mask=do_mask)
 
     # Summary
-    bank_labels = {
-        "dbs": "DBS consolidated statement",
-        "uob": "UOB",
-        "ocbc": "OCBC",
-        "icbc": "ICBC bank account statement",
+    # Human-readable label for the detected statement type, keyed by (bank, family)
+    # — the same key used by the extractor/renderer registries.
+    STATEMENT_LABELS: dict[tuple[str, str], str] = {
+        ("dbs", "consolidated"): "DBS consolidated statement",
+        ("icbc", "consolidated"): "ICBC bank account statement",
+        ("ocbc", "consolidated"): "OCBC consolidated statement",
+        ("ocbc", "card"): "OCBC credit card",
+        ("uob", "txn"): "UOB transaction-style",
+        ("uob", "one"): "UOB One multi-account",
+        ("uob", "portfolio"): "UOB portfolio summary",
     }
-    label = bank_labels.get(bank, f"{bank}/{family}")
-    if bank == "uob":
-        label = {"txn": "UOB transaction-style", "one": "UOB One multi-account", "portfolio": "UOB portfolio summary"}.get(family, label)
-    elif bank == "ocbc":
-        label = {"consolidated": "OCBC consolidated statement", "card": "OCBC credit card"}.get(family, label)
+    label = STATEMENT_LABELS.get((bank, family), f"{bank}/{family}")
 
     print(f"Statement type: {label}")
     print(f"Records: {sum(len(a.transactions) for a in ir.accounts)}")
