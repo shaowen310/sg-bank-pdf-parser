@@ -31,16 +31,6 @@ try {
         if ($LASTEXITCODE -ne 0) {
             Write-Host "  FAILED (masked)" -ForegroundColor Red
         }
-
-        # Step 3: IR JSON → unmasked Markdown (skip with -Quick)
-        if (-not $Quick) {
-            $outNoMask = Join-Path $Output "${baseName}_nomask.md"
-            Write-Host "--- $baseName (no-mask) ---" -ForegroundColor DarkCyan
-            python -m sg_bank_pdf_parser $irJson $outNoMask --no-mask
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "  FAILED (no-mask)" -ForegroundColor Red
-            }
-        }
     }
 
     Write-Host "`nAll done." -ForegroundColor Green
