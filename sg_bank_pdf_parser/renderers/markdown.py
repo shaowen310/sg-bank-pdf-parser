@@ -217,6 +217,25 @@ def _render_dbs_fd_account(out: list[str], acct: "Account", do_mask: bool = True
             )
         out.append("")
 
+    txns = acct.transactions or []
+    if txns:
+        out.append("**Movements**\n")
+        out.append("| Date | Description | Withdrawal | Deposit | Balance |")
+        out.append("|------|-------------|------------|---------|---------|")
+        for t in txns:
+            desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+            if t.amount < 0:
+                w_amt, d_amt = abs(t.amount), 0.0
+            else:
+                w_amt, d_amt = 0.0, t.amount
+            bal_str = f"{t.balance_after:,.2f}" if t.balance_after is not None else "—"
+            w_str = f"{w_amt:,.2f}" if w_amt else "—"
+            d_str = f"{d_amt:,.2f}" if d_amt else "—"
+            out.append(
+                f"| {t.posted_date or '—'} | {desc} | {w_str} | {d_str} | {bal_str} |"
+            )
+        out.append("")
+
 
 # ============================================================================
 # UOB Single-Account Transaction

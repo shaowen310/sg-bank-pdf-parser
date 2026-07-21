@@ -5,6 +5,7 @@ Wraps ``dbs_parser.parse_dbs()`` and maps its output to a ``ParsedStatement``.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -89,18 +90,6 @@ class DBSExtractor(BaseExtractor):
             is_fd = (name == "Fixed Deposit") or (acct_no in fd_by_no)
             is_srs = (name == "SRS Account") or (acct_no in srs_by_no)
 
-            # TODO: DBS fixed-deposit handling is incorrect — fd_records and
-            # transactions are being mixed. The parser exposes the FD account's
-            # own movement lines (renewals, premature withdrawals, interest
-            # postings) under "fd_transactions", but here every line is mapped
-            # to add_fd_record (a deposit-placement record) regardless of
-            # whether it is a true new placement or a transactional movement.
-            # They need to be split: genuine placements → add_fd_record, while
-            # withdrawals/interest/maturity movements → add_transaction.
-            # After fixing, the data currently in "fd_transactions" should be
-            # fully reflected in fd_records (placements) and transactions
-            # (movements), so there is no need to retain "fd_transactions" as a
-            # separate field in the IR JSON output.
             if is_srs:
                 # SRS is a first-class account: it owns a balance and its
                 # transactions like any other account, but additionally owns a
@@ -164,19 +153,67 @@ class DBSExtractor(BaseExtractor):
 
                 if is_fd:
                     principal = _parse_float(t.get("principal")) or 0.0
+                    interest_rate = _parse_float(t.get("interest_rate"))
+                    interest_amount = _parse_float(t.get("interest_amt"))
                     value_date_iso, maturity_date_iso = _dbs_period_to_dates_iso(
                         str(t.get("period", ""))
                     )
-                    _ = builder.add_fd_record(
-                        deposit_no=str(t.get("deposit_no", "")),
-                        value_date=value_date_iso,
-                        maturity_date=maturity_date_iso,
-                        interest_rate=str(t.get("interest_rate", "")),
-                        interest_amount=_parse_float(t.get("interest_amt")),
-                        principal=principal,
-                        currency=base_ccy,
-                        description=description,
+                    deposit_no = str(t.get("deposit_no", "")).strip()
+                    currency = str(t.get("currency", base_ccy)).strip() or base_ccy
+                    txn_type = str(t.get("txn_type", "")).strip()
+                    is_placement = (
+                        txn_type == "placement"
+                        or (
+                            txn_type == ""
+                            and deposit_no
+                            and (principal > 0 or interest_rate is not None)
+                        )
                     )
+                    fd_link = {
+                        "fd_account_no": acct_no,
+                        "deposit_no": deposit_no,
+                        "value_date": value_date_iso,
+                        "maturity_date": maturity_date_iso,
+                    }
+                    if is_placement:
+                        _ = builder.add_fd_record(
+                            deposit_no=deposit_no,
+                            value_date=value_date_iso,
+                            maturity_date=maturity_date_iso,
+                            interest_rate=str(t.get("interest_rate", "")),
+                            interest_amount=interest_amount,
+                            principal=principal,
+                            currency=currency,
+                            description=description,
+                        )
+                        _ = builder.add_transaction(
+                            posted_date=posted_date,
+                            amount=principal,
+                            currency=currency,
+                            description=description or f"FD {deposit_no}".strip(),
+                            raw_description=description,
+                            is_accrual=False,
+                            is_transfer=True,
+                            category_hint="fixed_deposit",
+                            tags=["fd_principal"],
+                            balance_after=balance,
+                            extras={"fd_link": fd_link},
+                        )
+                    else:
+                        neg = bool(re.search(r"withdraw|premature", description, re.I))
+                        _ = builder.add_transaction(
+                            posted_date=posted_date or value_date_iso or "",
+                            amount=-principal if neg else principal,
+                            currency=currency,
+                            description=description,
+                            raw_description=description,
+                            is_accrual=False,
+                            is_transfer=True,
+                            category_hint="fixed_deposit",
+                            tags=["fd_movement"],
+                            balance_after=balance,
+                            extras={"fd_link": fd_link},
+                        )
                 else:
                     _ = builder.add_transaction(
                         posted_date=posted_date,

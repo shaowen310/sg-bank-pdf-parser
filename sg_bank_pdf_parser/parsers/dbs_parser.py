@@ -772,6 +772,22 @@ def _parse_my_account_inline(lines: list[list[WordDict]], accounts: list[dict[st
 # (unused function _split_my_account_currencies removed)
 
 
+def _classify_fd_txn_type(desc: str) -> str:
+    """Classify an FD row as a 'placement' (fixed deposit record) or a 'movement'.
+
+    A row is a *movement* (transaction only, not an FD record) when it removes
+    the deposit before maturity. Signal: the word "premature" (DBS prints the
+    premature-withdrawal penalty as a "Interest Due To Premature Withdrawal"
+    line). A plain maturity "Withdrawal" that credits the principal back is
+    still a placement, as are "New Rollover Deposit" and other placements.
+    """
+    return (
+        "movement"
+        if re.search(r"premature", desc, re.I)
+        else "placement"
+    )
+
+
 def _parse_fd_section(lines: list[list[WordDict]], accounts: list[dict[str, Any]]) -> None:
     """Parse Fixed Deposit transaction table."""
     account_no = ""
@@ -872,9 +888,63 @@ def _parse_fd_section(lines: list[list[WordDict]], accounts: list[dict[str, Any]
                 desc_parts.append(w["text"])
 
             desc = " ".join(desc_parts).strip()
+            # A dated row is a *movement* only when it is a *premature* withdrawal
+            # (money removed before maturity). A plain maturity "Withdrawal" that
+            # credits back is still a placement (FD record). Premature ->
+            # movement; everything else -> placement.
+            txn_type = _classify_fd_txn_type(desc)
 
             pending_fd = {
+                "txn_type": txn_type,
                 "txn_date": txn_date,
+                "deposit_no": deposit_no,
+                "period": period,
+                "description": desc,
+                "interest_amt": interest_amt,
+                "principal": principal,
+                "interest_rate": interest_rate,
+            }
+            i += 1
+            continue
+
+        # Deposit-No sub-row: begins with the 12-digit Deposit No. (no leading
+        # date) and represents a separate action on the same deposit — either a
+        # *movement* (Premature Withdrawal) or a *placement* (a "New Rollover
+        # Deposit" that stays invested as a new fixed deposit). Classified by the
+        # shared helper, so Rollover is correctly treated as a placement.
+        # See references/dbs-layouts.md, "FD sub-rows".
+        first_word = min(ln, key=lambda w: w["x0"]) if ln else None
+        if (
+            first_word is not None
+            and not date_words
+            and DBS_FD_DEPOSIT_NO_X[0] <= first_word["x0"] <= DBS_FD_DEPOSIT_NO_X[1]
+            and DBS_FD_DEP_NO_RE.match(first_word["text"])
+        ):
+            if pending_fd:
+                fd_txns.append(pending_fd)
+            deposit_no = first_word["text"]
+            m_period = DBS_FD_PERIOD_RE.search(text)
+            period = m_period.group(0) if m_period else ""
+            interest_amt = ""
+            principal = ""
+            interest_rate = ""
+            desc_parts = []
+            for w in ln:
+                if w["x0"] < DBS_FD_DESC_X_START:
+                    continue
+                if is_bank_num(w["text"]):
+                    if DBS_FD_INTEREST_AMT_X1[0] <= w["x1"] <= DBS_FD_INTEREST_AMT_X1[1]:
+                        if not interest_amt:
+                            interest_amt = w["text"]
+                    elif DBS_FD_PRINCIPAL_X1[0] <= w["x1"] <= DBS_FD_PRINCIPAL_X1[1]:
+                        if not principal:
+                            principal = w["text"]
+                    continue
+                desc_parts.append(w["text"])
+            desc = " ".join(desc_parts).strip()
+            pending_fd = {
+                "txn_type": _classify_fd_txn_type(desc),
+                "txn_date": "",
                 "deposit_no": deposit_no,
                 "period": period,
                 "description": desc,
@@ -919,6 +989,11 @@ def _parse_fd_section(lines: list[list[WordDict]], accounts: list[dict[str, Any]
                 clean = " ".join(w["text"] for w in clean_words).strip()
                 if clean and not clean.startswith("Page ") and "PDS_MMCON" not in clean:
                     pending_fd["description"] = (pending_fd["description"] + " " + clean).strip()
+                    # A continuation that reveals a premature-withdrawal penalty
+                    # flips the whole row from placement to movement: it is no
+                    # longer a fixed-deposit record but a transaction.
+                    if re.search(r"premature", clean, re.I):
+                        pending_fd["txn_type"] = "movement"
 
         i += 1
 
