@@ -9,7 +9,6 @@ is applied at render time rather than inside the parser.
 from __future__ import annotations
 
 import re
-from collections import OrderedDict
 from collections.abc import Callable
 
 from ..account_type import AccountType
@@ -31,6 +30,20 @@ def _fd_rate_display(r: "FixedDepositRecord") -> str:
     if rate is not None:
         return f"{rate * 100:g}%"
     return "—"
+
+
+def _append_warnings(out: list[str], statement: ParsedStatement) -> None:
+    """Append a Warnings section if the IR carries any parser/postprocess warnings.
+
+    Keeps the warnings visible in every rendered statement (extraction gaps,
+    inferred values, etc.) without special-casing any bank renderer.
+    """
+    if not statement.warnings:
+        return
+    out.append("## Warnings\n")
+    for w in statement.warnings:
+        out.append(f"- {w}")
+    out.append("")
 
 
 # ============================================================================
@@ -152,6 +165,8 @@ def dbs_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> s
             _render_dbs_fd_account(out, acct, do_mask)
         elif acct.transactions:
             _render_dbs_standard_account(out, acct, do_mask)
+
+    _append_warnings(out, statement)
 
     out.append("---\n")
     out.append("_Auto-generated from the DBS/POSB Consolidated Statement PDF._\n")
@@ -303,6 +318,8 @@ def uob_txn_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) 
         f"| | **Total Withdrawals/Deposits** | **{tot_w:,.2f}** | **{tot_d:,.2f}** | |"
     )
     out.append("")
+    _append_warnings(out, statement)
+
     out.append("---\n")
     out.append("_Auto-generated from the UOB bank statement PDF._\n")
     return "\n".join(out)
@@ -407,6 +424,8 @@ def uob_portfolio_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = 
                 f"| {i.name} | {i.units} | {i.currency} | {i.unit_price} | {i.valuation} |"
             )
         out.append("")
+
+    _append_warnings(out, statement)
 
     out.append("---\n")
     out.append("_Auto-generated from the UOB portfolio statement PDF._\n")
@@ -531,6 +550,8 @@ def uob_one_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) 
         )
         out.append("")
 
+    _append_warnings(out, statement)
+
     out.append("---\n")
     out.append("_Auto-generated from the UOB One bank statement PDF._\n")
     return "\n".join(out)
@@ -598,6 +619,8 @@ def ocbc_consolidated_ir_to_markdown(statement: ParsedStatement, *, do_mask: boo
             f"| | | **Total Withdrawals/Deposits** | | **{tot_w:,.2f}** | **{tot_d:,.2f}** | |"
         )
         out.append("")
+
+    _append_warnings(out, statement)
 
     out.append("---\n")
     out.append("_Auto-generated from the OCBC Consolidated Statement PDF._\n")
@@ -725,6 +748,8 @@ def ocbc_card_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True
         )
     out.append(f"| | **TOTAL AMOUNT DUE** | | **{ccs.total_amount_due or '—'}** |")
     out.append("")
+    _append_warnings(out, statement)
+
     out.append("---\n")
     out.append("_Auto-generated from the OCBC credit card statement PDF._\n")
     return "\n".join(out)
@@ -779,7 +804,7 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
         out.append(f"**Account No.:** {mask_id(ca_accounts[0].account_no, do_mask=do_mask)}\n")
 
     # Group by currency
-    ccy_groups: OrderedDict[str, list[Transaction]] = OrderedDict()
+    ccy_groups: dict[str, list[Transaction]] = {}
     for t in ca_txns_all:
         ccy = t.currency or "SGD"
         ccy_groups.setdefault(ccy, []).append(t)
@@ -901,6 +926,8 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
             for il in dep_ins_lines:
                 out.append(il)
                 out.append("")
+
+    _append_warnings(out, statement)
 
     out.append("---\n")
     out.append("_Auto-generated from the ICBC statement PDF._\n")
