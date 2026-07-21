@@ -162,7 +162,7 @@ class DBSExtractor(BaseExtractor):
                     deposit_no = str(t.get("deposit_no", "")).strip()
                     currency = str(t.get("currency", base_ccy)).strip() or base_ccy
                     txn_type = str(t.get("txn_type", "")).strip()
-                    is_placement = (
+                    is_placement = bool(
                         txn_type == "placement"
                         or (
                             txn_type == ""
@@ -176,12 +176,14 @@ class DBSExtractor(BaseExtractor):
                         "value_date": value_date_iso,
                         "maturity_date": maturity_date_iso,
                     }
-                    if not posted_date and not is_placement:
-                        eff_date = value_date_iso or ""
-                    else:
-                        eff_date = posted_date
-                    if not eff_date and prev_fd_date:
-                        eff_date = prev_fd_date
+                    eff_date = posted_date or prev_fd_date
+                    if not eff_date:
+                        _ = builder.add_warning(
+                            f"FD transaction (deposit {deposit_no or acct_no}, "
+                            + f"'{description}') has no resolvable date: it carries no "
+                            + f"own date and no preceding FD transaction was found in "
+                            + f"this statement."
+                        )
                     if eff_date:
                         prev_fd_date = eff_date
 
