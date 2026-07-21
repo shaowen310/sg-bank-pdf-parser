@@ -186,6 +186,7 @@ class DBSExtractor(BaseExtractor):
                         prev_fd_date = eff_date
 
                     if is_placement:
+                        is_renewal = bool(re.search(r"renew", description, re.I))
                         _ = builder.add_fd_record(
                             deposit_no=deposit_no,
                             value_date=value_date_iso,
@@ -199,7 +200,7 @@ class DBSExtractor(BaseExtractor):
                         )
                         _ = builder.add_transaction(
                             posted_date=eff_date,
-                            amount=principal,
+                            amount=-principal if is_renewal else principal,
                             currency=currency,
                             description=description or f"FD {deposit_no}".strip(),
                             raw_description=description,
