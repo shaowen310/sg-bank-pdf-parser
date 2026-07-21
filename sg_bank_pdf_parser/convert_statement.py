@@ -2,8 +2,8 @@
 """Convert a Singapore bank statement (PDF or IR JSON) to Markdown.
 
 **Pipeline:**
-  PDF:    ``detect → extractor.to_ir() → write IR JSON → renderer(ir) → write MD``
-  IR JSON: ``load IR JSON → renderer(ir) → write MD``
+  PDF:    ``detect → extractor.to_ir() → postprocess → write IR JSON → renderer(ir) → write MD``
+  IR JSON: ``load IR JSON → postprocess → renderer(ir) → write MD``
 
 For PDF input, the script auto-detects the source bank and statement family,
 then dispatches to the appropriate extractor and IR→MD renderer. Masking
@@ -33,6 +33,7 @@ import pdfplumber
 from pdfplumber.pdf import PDF as PDFType
 
 from .ir_schema import ParsedStatement, from_json as ir_from_json
+from .postprocess import fill_fd_running_balances
 
 from .renderers.markdown import MD_RENDERER_REGISTRY
 
@@ -255,6 +256,7 @@ def main() -> None:
     if in_path.suffix.lower() == ".json":
         json_str = in_path.read_text(encoding="utf-8")
         ir = ir_from_json(json_str)
+        ir = fill_fd_running_balances(ir)
         print(f"Loaded IR: {in_path}  ({sum(len(a.transactions) for a in ir.accounts)} txns, parser: {ir.parser.name})")
         if ir_only:
             return  # validate only, do nothing
@@ -284,6 +286,7 @@ def main() -> None:
 
     extractor = ir_cls()
     ir = extractor.to_ir(in_path)
+    ir = fill_fd_running_balances(ir)
 
     # Write IR JSON (unmasked raw data)
     ir_path = out_path.with_suffix(".ir.json")
