@@ -842,61 +842,59 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
         )
         out.append("")
 
-    # FD Records
-    fd_records_all = [r for a in fd_accounts for r in (a.fd_records or [])]
-    if fd_records_all:
-        out.append("## Fixed Deposit Records\n")
-        out.append(f"**Account No.:** {mask_id(fd_accounts[0].account_no, do_mask=do_mask)}\n")
-        out.append(
-            "| Deposit No. | Value Date | Maturity Date | Period | CCY | Principal | "
-            + "Interest Rate | Interest Amount |"
-        )
-        out.append(
-            "|------------|------------|---------------|--------|-----|-----------|"+
-            "-------------|---------------|"
-        )
-        for r in fd_records_all:
-            vd = r.value_date or "—"
-            mat = r.maturity_date or "—"
-            ia = r.interest_amount
-            ia_str = f"{ia:,.2f}" if ia is not None else "—"
-            pr = r.principal
-            pr_str = f"{pr:,.2f}"
-            out.append(
-                f"| {mask_id(r.deposit_no, do_mask=do_mask)} | {vd} | {mat} | "
-                + f"{format_fd_period(r.value_date, r.maturity_date)} | "
-                + f"{r.currency} | {pr_str} | {_fd_rate_display(r)} | {ia_str} |"
-            )
-        out.append("")
-
-    # FD Account Transactions (built from the FD transaction table)
-    fd_txn_accounts = [a for a in fd_accounts if a.transactions]
-    if fd_txn_accounts:
-        out.append("## Fixed Deposit Account Transactions\n")
-        out.append("_Built from the Fixed Deposit transaction table (principal leg). "+
-                   "Balance read from the FD table; linked to the Current Account row above._\n")
-        for a in fd_txn_accounts:
+    # Fixed Deposit accounts — render each account's records and transactions.
+    if fd_accounts:
+        for a in fd_accounts:
+            fd_records = a.fd_records or []
+            has_txn = bool(a.transactions)
+            if not fd_records and not has_txn:
+                continue
+            out.append("## Fixed Deposit Account\n")
             out.append(f"**Account No.:** {mask_id(a.account_no, do_mask=do_mask)}\n")
-            out.append("| Date | Remark | Deposit | Withdrawal | Balance |")
-            out.append("|------|--------|---------|------------|---------|")
-            for t in a.transactions:
-                desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
-                fd_link = (t.extras or {}).get("fd_link")
-                if fd_link:
-                    desc = f"{desc} (FD {fd_link.get('fd_account_no', '')} · #{fd_link.get('deposit_no', '')})"
-                if t.amount > 0:
-                    d = t.amount
-                    w = 0.0
-                else:
-                    d = 0.0
-                    w = abs(t.amount)
-                bal_str = f"{t.balance_after:,.2f}" if t.balance_after is not None else "—"
-                d_str = f"{d:,.2f}" if d else "—"
-                w_str = f"{w:,.2f}" if w else "—"
+            if fd_records:
                 out.append(
-                    f"| {t.posted_date} | {desc} | {d_str} | {w_str} | {bal_str} |"
+                    "| Deposit No. | Value Date | Maturity Date | Period | CCY | Principal | "
+                    + "Interest Rate | Interest Amount |"
                 )
-            out.append("")
+                out.append(
+                    "|------------|------------|---------------|--------|-----|-----------|"
+                    + "-------------|---------------|"
+                )
+                for r in fd_records:
+                    vd = r.value_date or "—"
+                    mat = r.maturity_date or "—"
+                    ia = r.interest_amount
+                    ia_str = f"{ia:,.2f}" if ia is not None else "—"
+                    pr = r.principal
+                    pr_str = f"{pr:,.2f}"
+                    out.append(
+                        f"| {mask_id(r.deposit_no, do_mask=do_mask)} | {vd} | {mat} | "
+                        + f"{format_fd_period(r.value_date, r.maturity_date)} | "
+                        + f"{r.currency} | {pr_str} | {_fd_rate_display(r)} | {ia_str} |"
+                    )
+                out.append("")
+            if has_txn:
+                out.append("**Transactions**\n")
+                out.append("| Date | Remark | Deposit | Withdrawal | Balance |")
+                out.append("|------|--------|---------|------------|---------|")
+                for t in a.transactions:
+                    desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+                    fd_link = (t.extras or {}).get("fd_link")
+                    if fd_link:
+                        desc = f"{desc} (FD {fd_link.get('fd_account_no', '')} · #{fd_link.get('deposit_no', '')})"
+                    if t.amount > 0:
+                        d = t.amount
+                        w = 0.0
+                    else:
+                        d = 0.0
+                        w = abs(t.amount)
+                    bal_str = f"{t.balance_after:,.2f}" if t.balance_after is not None else "—"
+                    d_str = f"{d:,.2f}" if d else "—"
+                    w_str = f"{w:,.2f}" if w else "—"
+                    out.append(
+                        f"| {t.posted_date} | {desc} | {d_str} | {w_str} | {bal_str} |"
+                    )
+                out.append("")
 
     # Reminders
     if reminders:
