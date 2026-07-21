@@ -137,7 +137,6 @@ class ICBCExtractor(BaseExtractor):
                     interest_amount=_icbc_parse_balance(t.get("interest_amount")),
                     principal=principal,
                     currency=ccy,
-                    description=str(t.get("remark", "") or f"FD {t.get('seq_no', '')}"),
                 )
 
                 # Build the FD *transaction* purely from the FD table (principal

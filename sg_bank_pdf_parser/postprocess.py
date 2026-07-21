@@ -79,6 +79,6 @@ def fill_fd_running_balances(statement: ParsedStatement) -> ParsedStatement:
         statement.warnings.append(
             f"Inferred running balance for fixed-deposit account "+
             f"'{acct.name}' ({acct.account_no}): opening {opening:,.2f} "+
-            f"across {len(txns)} movements."
+            f"across {len(txns)} transactions."
         )
     return statement

@@ -179,7 +179,6 @@ class FixedDepositRecord:
     interest_amount: float | None = None  # renamed from interest_amt
     principal: float = 0.0            # placed principal
     currency: str = ""
-    description: str = ""
 
 
 @dataclass
@@ -346,7 +345,6 @@ def _fd_record_from_dict(rd: dict[str, Any]) -> FixedDepositRecord:
         interest_amount=rd.get("interest_amount"),
         principal=rd.get("principal", 0.0),
         currency=rd.get("currency", ""),
-        description=rd.get("description", ""),
     )
 
 

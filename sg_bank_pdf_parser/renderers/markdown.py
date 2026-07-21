@@ -221,7 +221,7 @@ def _render_dbs_standard_account(out: list[str], acct: "Account", do_mask: bool 
 
 
 def _render_dbs_fd_account(out: list[str], acct: "Account", do_mask: bool = True) -> None:
-    """Render a DBS Fixed Deposit account's record table."""
+    """Render a DBS Fixed Deposit account's record table (ICBC-style columns)."""
     out.append(f"### {acct.name}\n")
     out.append(f"**Account No.:** {mask_id(acct.account_no, do_mask=do_mask)}  ")
     if acct.currency:
@@ -230,27 +230,31 @@ def _render_dbs_fd_account(out: list[str], acct: "Account", do_mask: bool = True
 
     records = acct.fd_records or []
     if records:
-        out.append("| Value Date | Deposit No. | Description | Interest Amt | Principal | Interest Rate | Maturity Date | Period |")
-        out.append("|------------|------------|-------------|-------------|-----------|---------------|---------------|--------|")
+        out.append(
+            "| Deposit No. | Value Date | Maturity Date | Period | Principal | "
+            + "Interest Rate | Interest Amount |"
+        )
+        out.append(
+            "|------------|------------|---------------|--------|-----------|"
+            + "-------------|---------------|"
+        )
         for r in records:
-            desc = md_masked_description(r.description or "", do_mask=do_mask)
+            vd = r.value_date or "—"
+            mat = r.maturity_date or "—"
             ia = r.interest_amount
             ia_str = f"{ia:,.2f}" if ia is not None else "—"
             pr = r.principal
             pr_str = f"{pr:,.2f}"
-            rate = _fd_rate_display(r)
-            vd = r.value_date or ""
-            mat = r.maturity_date or "—"
             out.append(
-                f"| {vd} | {mask_id(r.deposit_no, do_mask=do_mask)} | "
-                + f"{desc} | {ia_str} | {pr_str} | {rate} | {mat} | "
-                + f"{format_fd_period(r.value_date, r.maturity_date)} |"
+                f"| {mask_id(r.deposit_no, do_mask=do_mask)} | {vd} | {mat} | "
+                + f"{format_fd_period(r.value_date, r.maturity_date)} | "
+                + f"{pr_str} | {_fd_rate_display(r)} | {ia_str} |"
             )
         out.append("")
 
     txns = acct.transactions or []
     if txns:
-        out.append("**Movements**\n")
+        out.append("**Transactions**\n")
         out.append("| Date | Description | Withdrawal | Deposit | Balance |")
         out.append("|------|-------------|------------|---------|---------|")
         for t in txns:
@@ -845,11 +849,11 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
         out.append(f"**Account No.:** {mask_id(fd_accounts[0].account_no, do_mask=do_mask)}\n")
         out.append(
             "| Deposit No. | Value Date | Maturity Date | Period | CCY | Principal | "
-            + "Interest Rate | Interest Amount | Description |"
+            + "Interest Rate | Interest Amount |"
         )
         out.append(
             "|------------|------------|---------------|--------|-----|-----------|"+
-            "-------------|---------------|-------------|"
+            "-------------|---------------|"
         )
         for r in fd_records_all:
             vd = r.value_date or "—"
@@ -858,11 +862,10 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
             ia_str = f"{ia:,.2f}" if ia is not None else "—"
             pr = r.principal
             pr_str = f"{pr:,.2f}"
-            desc = md_masked_description(r.description or "", do_mask=do_mask)
             out.append(
                 f"| {mask_id(r.deposit_no, do_mask=do_mask)} | {vd} | {mat} | "
                 + f"{format_fd_period(r.value_date, r.maturity_date)} | "
-                + f"{r.currency} | {pr_str} | {_fd_rate_display(r)} | {ia_str} | {desc} |"
+                + f"{r.currency} | {pr_str} | {_fd_rate_display(r)} | {ia_str} |"
             )
         out.append("")
 

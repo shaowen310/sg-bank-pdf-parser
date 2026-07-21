@@ -331,7 +331,6 @@ class IRBuilder:
         interest_amount: float | None = None,
         principal: float = 0.0,
         currency: str = "",
-        description: str = "",
         assume_pct_rate: bool = False,
     ) -> "IRBuilder":
         """Append one fixed-deposit record to the active account.
@@ -368,8 +367,6 @@ class IRBuilder:
                 existing.interest_rate = rate_dec
             if not existing.currency:
                 existing.currency = currency or self._base_currency
-            if description and description != existing.description:
-                existing.description = (existing.description + "; " + description).strip("; ")
             merged = existing
         else:
             merged = FixedDepositRecord(
@@ -381,7 +378,6 @@ class IRBuilder:
                 interest_amount=interest_amount,
                 principal=principal,
                 currency=currency or self._base_currency,
-                description=description,
             )
             acct.fd_records.append(merged)
 

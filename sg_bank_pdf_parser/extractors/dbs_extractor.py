@@ -196,7 +196,6 @@ class DBSExtractor(BaseExtractor):
                             interest_amount=interest_amount,
                             principal=principal,
                             currency=currency,
-                            description=description,
                         )
                         _ = builder.add_transaction(
                             posted_date=eff_date,

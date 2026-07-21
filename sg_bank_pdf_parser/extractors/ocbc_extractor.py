@@ -136,7 +136,6 @@ class OCBCConsolidatedExtractor(BaseExtractor):
                         interest_amount=None,
                         principal=bal,
                         currency=base_ccy,
-                        description=f"FD {td.get('deposit_no', '')}",
                     )
 
         return builder.build()
