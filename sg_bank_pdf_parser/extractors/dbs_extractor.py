@@ -142,6 +142,7 @@ class DBSExtractor(BaseExtractor):
                     balance_sgd=_parse_float(bal.get("balance_sgd")),
                 )
 
+            prev_fd_date = ""
             for t in txn_list:
                 withdrawal = float(str(t.get("withdrawal", "0") or "0").replace(",", ""))
                 deposit = float(str(t.get("deposit", "0") or "0").replace(",", ""))
@@ -175,6 +176,15 @@ class DBSExtractor(BaseExtractor):
                         "value_date": value_date_iso,
                         "maturity_date": maturity_date_iso,
                     }
+                    if not posted_date and not is_placement:
+                        eff_date = value_date_iso or ""
+                    else:
+                        eff_date = posted_date
+                    if not eff_date and prev_fd_date:
+                        eff_date = prev_fd_date
+                    if eff_date:
+                        prev_fd_date = eff_date
+
                     if is_placement:
                         _ = builder.add_fd_record(
                             deposit_no=deposit_no,
@@ -188,7 +198,7 @@ class DBSExtractor(BaseExtractor):
                             description=description,
                         )
                         _ = builder.add_transaction(
-                            posted_date=posted_date,
+                            posted_date=eff_date,
                             amount=principal,
                             currency=currency,
                             description=description or f"FD {deposit_no}".strip(),
@@ -203,7 +213,7 @@ class DBSExtractor(BaseExtractor):
                     else:
                         neg = bool(re.search(r"withdraw|premature", description, re.I))
                         _ = builder.add_transaction(
-                            posted_date=posted_date or value_date_iso or "",
+                            posted_date=eff_date,
                             amount=-principal if neg else principal,
                             currency=currency,
                             description=description,
