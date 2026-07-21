@@ -2,8 +2,7 @@
 
 Provides:
 - ``md_masked_description()`` — masking wrapper applied at render time
-- ``_fmt()`` — empty-value formatter
-- Amount formatting utilities
+- ``fmt()`` — empty-value formatter
 """
 
 from __future__ import annotations
@@ -28,15 +27,3 @@ def md_masked_description(description: str, *, do_mask: bool = True) -> str:
 def fmt(val: object) -> str:
     """Return ``"—"`` for empty/falsy values, else ``str(val)``."""
     return str(val) if val else "—"
-
-
-def _parse_amount(val: str | float | None) -> float:
-    """Parse a string amount (possibly with commas) to float, returning 0.0 on failure."""
-    if val is None:
-        return 0.0
-    if isinstance(val, (int, float)):
-        return float(val)
-    try:
-        return float(str(val).replace(",", ""))
-    except (ValueError, TypeError):
-        return 0.0
