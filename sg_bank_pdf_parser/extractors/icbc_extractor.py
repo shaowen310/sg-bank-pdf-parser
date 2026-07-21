@@ -131,7 +131,7 @@ class ICBCExtractor(BaseExtractor):
 
                 _ = builder.add_fd_record(
                     deposit_no=str(t.get("seq_no", "")),
-                    value_date=_icbc_date_to_iso(str(t.get("deal_date", ""))) or None,
+                    value_date=_icbc_date_to_iso(str(t.get("value_date", ""))) or None,
                     maturity_date=_icbc_date_to_iso(str(t.get("maturity_date", ""))) or None,
                     interest_rate=str(t.get("rate", "")),
                     interest_amount=_icbc_parse_balance(t.get("interest_amount")),
