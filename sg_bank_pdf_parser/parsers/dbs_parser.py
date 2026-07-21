@@ -47,6 +47,21 @@ DBS_FD_INTEREST_AMT_X1 = (420, 460)
 DBS_FD_PRINCIPAL_X1 = (505, 560)
 DBS_FD_RATE_X1 = (510, 560)
 
+# FD numeric values: 2dp amounts (principal/interest) and 6dp rates both occur
+# in the rightmost column band, so the parser must treat 6dp numbers as numbers
+# (the rate) and not let them leak into the description.
+_FD_AMOUNT_RE = re.compile(r"^\d{1,3}(?:,\d{3})*\.\d{2,6}$")
+
+
+def _looks_like_rate(text: str) -> bool:
+    """True for a rate value in the Principal/Rate column, e.g. ``2.450000``.
+
+    Rates carry >=3 decimal places and no thousands separator, unlike
+    principal/interest amounts which have 2dp and may carry commas. This
+    distinguishes the two values that share the same x1 column band.
+    """
+    return bool(re.match(r"^\d+\.\d{3,}$", text))
+
 # --- Account Summary table (page 0) ---
 DBS_SUMMARY_ACCT_NAME_X = (38, 180)
 DBS_SUMMARY_ACCT_NO_X = (265, 350)
@@ -871,18 +886,21 @@ def _parse_fd_section(lines: list[list[WordDict]], accounts: list[dict[str, Any]
             if not deposit_no and fd_txns:
                 deposit_no = fd_txns[-1]["deposit_no"]
 
-            # Description and numeric values from x0 >= DESC_X_START
-            # Note: interest_rate only appears on continuation (sub-row) lines,
-            # never on the main date line where principal also sits at the same x1.
+            # Description and numeric values from x0 >= DESC_X_START.
+            # The rate column shares the same x1 band as principal, so a value
+            # there with >=3 dp (no comma) is the rate; otherwise it is principal.
             for w in ln:
                 if w["x0"] < DBS_FD_DESC_X_START:
                     continue
-                if is_bank_num(w["text"]):
+                if is_bank_num(w["text"]) or _FD_AMOUNT_RE.match(w["text"]):
                     if DBS_FD_INTEREST_AMT_X1[0] <= w["x1"] <= DBS_FD_INTEREST_AMT_X1[1]:
                         if not interest_amt:
                             interest_amt = w["text"]
                     elif DBS_FD_PRINCIPAL_X1[0] <= w["x1"] <= DBS_FD_PRINCIPAL_X1[1]:
-                        if not principal:
+                        if _looks_like_rate(w["text"]):
+                            if not interest_rate:
+                                interest_rate = w["text"]
+                        elif not principal:
                             principal = w["text"]
                     continue
                 desc_parts.append(w["text"])
@@ -932,12 +950,15 @@ def _parse_fd_section(lines: list[list[WordDict]], accounts: list[dict[str, Any]
             for w in ln:
                 if w["x0"] < DBS_FD_DESC_X_START:
                     continue
-                if is_bank_num(w["text"]):
+                if is_bank_num(w["text"]) or _FD_AMOUNT_RE.match(w["text"]):
                     if DBS_FD_INTEREST_AMT_X1[0] <= w["x1"] <= DBS_FD_INTEREST_AMT_X1[1]:
                         if not interest_amt:
                             interest_amt = w["text"]
                     elif DBS_FD_PRINCIPAL_X1[0] <= w["x1"] <= DBS_FD_PRINCIPAL_X1[1]:
-                        if not principal:
+                        if _looks_like_rate(w["text"]):
+                            if not interest_rate:
+                                interest_rate = w["text"]
+                        elif not principal:
                             principal = w["text"]
                     continue
                 desc_parts.append(w["text"])

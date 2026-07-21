@@ -14,8 +14,23 @@ from collections.abc import Callable
 
 from ..account_type import AccountType
 from .helpers import md_masked_description
-from ..ir_schema import Account, ParsedStatement, Transaction
-from ..common import mask_id
+from ..ir_schema import Account, FixedDepositRecord, ParsedStatement, Transaction
+from ..common import format_fd_period, mask_id
+
+
+def _fd_rate_display(r: "FixedDepositRecord") -> str:
+    """Return the rate for display, preferring the raw printed string.
+
+    Falls back to formatting the canonical decimal (e.g. ``0.025`` → ``"2.5%"``)
+    for round-tripped IR whose ``raw_interest_rate`` was dropped.
+    """
+    raw = r.raw_interest_rate
+    if raw:
+        return raw
+    rate = r.interest_rate
+    if rate is not None:
+        return f"{rate * 100:g}%"
+    return "—"
 
 
 # ============================================================================
@@ -200,20 +215,21 @@ def _render_dbs_fd_account(out: list[str], acct: "Account", do_mask: bool = True
 
     records = acct.fd_records or []
     if records:
-        out.append("| Value Date | Deposit No. | Description | Interest Amt | Principal | Interest Rate | Maturity Date |")
-        out.append("|------------|------------|-------------|-------------|-----------|---------------|---------------|")
+        out.append("| Value Date | Deposit No. | Description | Interest Amt | Principal | Interest Rate | Maturity Date | Period |")
+        out.append("|------------|------------|-------------|-------------|-----------|---------------|---------------|--------|")
         for r in records:
             desc = md_masked_description(r.description or "", do_mask=do_mask)
             ia = r.interest_amount
             ia_str = f"{ia:,.2f}" if ia is not None else "—"
             pr = r.principal
             pr_str = f"{pr:,.2f}"
-            rate = r.interest_rate or "—"
+            rate = _fd_rate_display(r)
             vd = r.value_date or ""
             mat = r.maturity_date or "—"
             out.append(
                 f"| {vd} | {mask_id(r.deposit_no, do_mask=do_mask)} | "
-                + f"{desc} | {ia_str} | {pr_str} | {rate} | {mat} |"
+                + f"{desc} | {ia_str} | {pr_str} | {rate} | {mat} | "
+                + f"{format_fd_period(r.value_date, r.maturity_date)} |"
             )
         out.append("")
 
@@ -602,7 +618,7 @@ def _render_ocbc_fd_account(out: list[str], acct: "Account", do_mask: bool = Tru
         out.append("|------------|-------------|---------------------|---------------|-----------|")
         for r in records:
             vd = r.value_date or "—"
-            rate = r.interest_rate or "—"
+            rate = _fd_rate_display(r)
             mat = r.maturity_date or "—"
             pr = r.principal
             pr_str = f"{pr:,.2f}"
@@ -803,11 +819,11 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
         out.append("## Fixed Deposit Records\n")
         out.append(f"**Account No.:** {mask_id(fd_accounts[0].account_no, do_mask=do_mask)}\n")
         out.append(
-            "| Deposit No. | Value Date | Maturity Date | CCY | Principal | "
+            "| Deposit No. | Value Date | Maturity Date | Period | CCY | Principal | "
             + "Interest Rate | Interest Amount | Description |"
         )
         out.append(
-            "|------------|------------|---------------|-----|-----------|"+
+            "|------------|------------|---------------|--------|-----|-----------|"+
             "-------------|---------------|-------------|"
         )
         for r in fd_records_all:
@@ -820,7 +836,8 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
             desc = md_masked_description(r.description or "", do_mask=do_mask)
             out.append(
                 f"| {mask_id(r.deposit_no, do_mask=do_mask)} | {vd} | {mat} | "
-                + f"{r.currency} | {pr_str} | {r.interest_rate or '—'} | {ia_str} | {desc} |"
+                + f"{format_fd_period(r.value_date, r.maturity_date)} | "
+                + f"{r.currency} | {pr_str} | {_fd_rate_display(r)} | {ia_str} | {desc} |"
             )
         out.append("")
 

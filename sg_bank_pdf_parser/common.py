@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from datetime import date, datetime
 from typing import Protocol, TypedDict
 
 # Right-edge artefacts from the rotated right-margin sidebar that appears on
@@ -342,3 +343,108 @@ def mask_names_in_description(desc: str) -> str:
         result.append(" ".join(masked_tokens))
 
     return "\n".join(result)
+
+
+# ---------------------------------------------------------------------------
+# Fixed-deposit interest verification helpers
+# ---------------------------------------------------------------------------
+
+def parse_fd_rate(rate: str | None, *, assume_pct: bool = False) -> float | None:
+    """Parse an FD interest-rate string into a decimal fraction.
+
+    Handles ``"1.25%"`` (÷100), ``"0.050000"`` (decimal), and a bare value
+    ``> 1`` with no ``%`` is treated as a percentage (covers stray ``"1.25"``).
+
+    Set ``assume_pct=True`` when the source column is already a percentage
+    number without a ``%`` sign (e.g. DBS's ``Interest Rate (% p.a.)`` column),
+    so that a bare ``"0.050000"`` becomes ``0.0005`` (0.05%) rather than being
+    misread as an already-decimal 5% rate.
+
+    Returns ``None`` if unparseable/empty.
+    """
+    if not rate:
+        return None
+    s = rate.strip()
+    pct = s.endswith("%")
+    s = s.rstrip("%").strip()
+    m = re.search(r"\d+(?:\.\d+)?", s)
+    if not m:
+        return None
+    val = float(m.group())
+    if pct:
+        return val / 100.0
+    if assume_pct:
+        return val / 100.0
+    # Backwards-compatible default: a bare value > 1 is a percentage.
+    if val > 1:
+        return val / 100.0
+    return val
+
+
+def _parse_fd_date(s: str | None) -> date | None:
+    """Best-effort parse of an FD date string to a ``date`` (``None`` on failure)."""
+    if not s:
+        return None
+    s = s.strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d/%m/%y", "%Y/%m/%d", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def format_fd_period(value_date: str | None, maturity_date: str | None) -> str:
+    """Render the FD term as an actual/365 day-count string, e.g. ``"365/365"``.
+
+    Returns ``"—"`` when the dates are missing, invalid, or inverted.
+    """
+    vd = _parse_fd_date(value_date)
+    mat = _parse_fd_date(maturity_date)
+    if vd is None or mat is None or mat < vd:
+        return "—"
+    return f"{(mat - vd).days}/365"
+
+
+def verify_fd_interest(
+    principal: float,
+    interest_rate: str | float | None,
+    value_date: str | None,
+    maturity_date: str | None,
+    interest_amount: float | None,
+    *,
+    tol: float = 0.01,
+) -> str | None:
+    """Return a warning string if ``principal × rate × period ≠ interest_amount``.
+
+    Skips (returns ``None``) when ``interest_amount`` is ``None`` (e.g. OCBC),
+    the rate is unparseable, or the dates are missing/invalid/non-positive.
+    Period (years) is ``(maturity - value).days / 365`` (actual/365 basis).
+
+    ``interest_rate`` may be either an already-decimal value (``0.025``) or a
+    raw string (``"2.5%"``); a decimal is passed through directly.
+    """
+    if interest_amount is None:
+        return None
+    if isinstance(interest_rate, (int, float)):
+        rate = float(interest_rate)
+    else:
+        rate = parse_fd_rate(interest_rate)
+    if rate is None:
+        return None
+    vd = _parse_fd_date(value_date)
+    mat = _parse_fd_date(maturity_date)
+    if vd is None or mat is None or mat <= vd:
+        return None
+    period_years = (mat - vd).days / 365.0
+    expected = principal * rate * period_years
+    if abs(interest_amount - expected) > tol:
+        return (
+            f"FD interest mismatch: principal {principal:,.2f} × rate {rate:.6f} "
+            f"× period {period_years:.6f}y = {expected:,.2f}, but stated interest "
+            f"amount is {interest_amount:,.2f} "
+            f"(diff={abs(interest_amount - expected):.2f})"
+        )
+    return None

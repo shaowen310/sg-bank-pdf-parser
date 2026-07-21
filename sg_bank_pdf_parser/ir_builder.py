@@ -41,6 +41,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .account_type import AccountType
+from .common import parse_fd_rate, verify_fd_interest
 from .ir_schema import (
     Account,
     CreditCardSummary,
@@ -57,6 +58,25 @@ from .ir_schema import (
 )
 
 
+def _fd_records_complementary(existing: "FixedDepositRecord", new_principal: float,
+                              new_interest_amount: float | None) -> bool:
+    """Return True if ``new`` carries the field ``existing`` is missing.
+
+    This prevents two genuinely distinct deposits that merely share the same
+    deposit_no/value_date/maturity_date from being collapsed into one, while
+    still merging a principal line with its matching interest line.
+    """
+    existing_principal = bool(existing.principal)
+    existing_interest = bool(existing.interest_amount)
+    new_principal_b = bool(new_principal)
+    new_interest_b = bool(new_interest_amount)
+    if existing_principal and new_interest_b and not existing_interest:
+        return True
+    if existing_interest and new_principal_b and not existing_principal:
+        return True
+    return False
+
+
 class IRBuilder:
     """Builds a ``ParsedStatement`` incrementally through chainable methods."""
 
@@ -67,6 +87,10 @@ class IRBuilder:
         self._accounts: list[Account] = []
         self._active_account: Account | None = None
         self._warnings: list[str] = []
+        # FD interest-verification warnings, keyed by (deposit_no, value_date,
+        # maturity_date) so a record that is merged across multiple add_fd_record
+        # calls is never double-reported.
+        self._fd_warnings: dict[tuple[str, str | None, str | None], str | None] = {}
         self._period_from: str | None = None
         self._period_to: str | None = None
         self._base_currency: str = ""
@@ -308,6 +332,7 @@ class IRBuilder:
         principal: float = 0.0,
         currency: str = "",
         description: str = "",
+        assume_pct_rate: bool = False,
     ) -> "IRBuilder":
         """Append one fixed-deposit record to the active account.
 
@@ -321,16 +346,53 @@ class IRBuilder:
         assert acct is not None
         if acct.fd_records is None:
             acct.fd_records = []
-        acct.fd_records.append(FixedDepositRecord(
-            deposit_no=deposit_no,
-            value_date=value_date,
-            maturity_date=maturity_date,
-            interest_rate=interest_rate,
-            interest_amount=interest_amount,
-            principal=principal,
-            currency=currency or self._base_currency,
-            description=description,
-        ))
+        rate_dec = parse_fd_rate(interest_rate, assume_pct=assume_pct_rate)
+        key = (deposit_no, value_date, maturity_date)
+        existing = None
+        for rec in acct.fd_records:
+            if rec.deposit_no == deposit_no and rec.value_date == value_date \
+                    and rec.maturity_date == maturity_date:
+                existing = rec
+                break
+
+        if existing is not None and _fd_records_complementary(existing, principal, interest_amount):
+            # Merge the complementary FD row into the existing record instead of
+            # appending a duplicate (one row carries principal, the other interest).
+            if not existing.principal:
+                existing.principal = principal or 0.0
+            if existing.interest_amount is None or existing.interest_amount == 0:
+                existing.interest_amount = interest_amount
+            if not existing.raw_interest_rate:
+                existing.raw_interest_rate = interest_rate or ""
+            if existing.interest_rate is None and rate_dec is not None:
+                existing.interest_rate = rate_dec
+            if not existing.currency:
+                existing.currency = currency or self._base_currency
+            if description and description != existing.description:
+                existing.description = (existing.description + "; " + description).strip("; ")
+            merged = existing
+        else:
+            merged = FixedDepositRecord(
+                deposit_no=deposit_no,
+                value_date=value_date,
+                maturity_date=maturity_date,
+                interest_rate=rate_dec,
+                raw_interest_rate=interest_rate,
+                interest_amount=interest_amount,
+                principal=principal,
+                currency=currency or self._base_currency,
+                description=description,
+            )
+            acct.fd_records.append(merged)
+
+        warn = verify_fd_interest(
+            principal=merged.principal,
+            interest_rate=merged.interest_rate,
+            value_date=merged.value_date,
+            maturity_date=merged.maturity_date,
+            interest_amount=merged.interest_amount,
+        )
+        self._fd_warnings[key] = warn
         return self
 
     def add_transaction_dict(self, row: dict[str, Any]) -> "IRBuilder":
@@ -375,7 +437,8 @@ class IRBuilder:
             source_file=self._source_file,
             statement_meta=self._meta,
             accounts=list(self._accounts),
-            warnings=list(self._warnings),
+            warnings=list(self._warnings)
+            + [w for w in self._fd_warnings.values() if w],
             investment_holdings=list(self._investment_holdings) if self._investment_holdings else None,
             reconciliation=self._reconciliation,
             extras=self._extras,

@@ -181,6 +181,7 @@ class DBSExtractor(BaseExtractor):
                             value_date=value_date_iso,
                             maturity_date=maturity_date_iso,
                             interest_rate=str(t.get("interest_rate", "")),
+                            assume_pct_rate=True,
                             interest_amount=interest_amount,
                             principal=principal,
                             currency=currency,

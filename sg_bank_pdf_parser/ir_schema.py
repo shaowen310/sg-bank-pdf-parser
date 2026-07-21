@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .account_type import AccountType
+from .common import parse_fd_rate
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +174,8 @@ class FixedDepositRecord:
     deposit_no: str = ""              # deposit / contract number
     value_date: str | None = None     # start/deal date, ISO YYYY-MM-DD (not posted_date)
     maturity_date: str | None = None  # ISO YYYY-MM-DD, normalized from source
-    interest_rate: str | None = None  # rate as printed, formatting preserved
+    interest_rate: float | None = None          # canonical actual rate, e.g. 0.025
+    raw_interest_rate: str | None = None        # raw printed string, e.g. "2.5%", for display
     interest_amount: float | None = None  # renamed from interest_amt
     principal: float = 0.0            # placed principal
     currency: str = ""
@@ -331,11 +333,16 @@ def _account_from_dict(ad: dict[str, Any]) -> Account:
 
 def _fd_record_from_dict(rd: dict[str, Any]) -> FixedDepositRecord:
     """Build a single ``FixedDepositRecord`` from its dict representation."""
+    raw = rd.get("raw_interest_rate")
+    rate = rd.get("interest_rate")
+    if rate is None and raw is not None:
+        rate = parse_fd_rate(raw)
     return FixedDepositRecord(
         deposit_no=rd.get("deposit_no", ""),
         value_date=rd.get("value_date"),
         maturity_date=rd.get("maturity_date"),
-        interest_rate=rd.get("interest_rate"),
+        interest_rate=rate,
+        raw_interest_rate=raw,
         interest_amount=rd.get("interest_amount"),
         principal=rd.get("principal", 0.0),
         currency=rd.get("currency", ""),
