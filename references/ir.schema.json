@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/shaowen310/sg-bank-pdf-parser/main/references/ir.schema.json",
+  "title": "Bank Statement IR",
+  "description": "Public, language-agnostic schema for the intermediate representation (IR) produced by sg-bank-to-md (sg_bank_pdf_parser). The authoritative Python definitions live in sg_bank_pdf_parser/ir_schema.py. ir_version 2026.3 is required: from_dict() rejects any IR that lacks the 'accounts' field (i.e. IR from parsers older than 2026.3).",
+  "type": "object",
+  "required": ["ir_version", "accounts"],
+  "additionalProperties": true,
+  "properties": {
+    "ir_version": {
+      "type": "string",
+      "description": "Schema/IR version, e.g. \"2026.3\". Downstream consumers must require >= 2026.3."
+    },
+    "parsed_at": { "type": "string" },
+    "parser": { "$ref": "#/$defs/ParserInfo" },
+    "source_file": { "type": "string" },
+    "statement_meta": { "$ref": "#/$defs/StatementMeta" },
+    "accounts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Account" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "investment_holdings": {
+      "type": ["array", "null"],
+      "items": { "$ref": "#/$defs/InvestmentHolding" }
+    },
+    "reconciliation": { "type": ["object", "null"], "additionalProperties": true },
+    "extras": { "type": ["object", "null"], "additionalProperties": true },
+    "credit_card_summary": {
+      "oneOf": [{ "$ref": "#/$defs/CreditCardSummary" }, { "type": "null" }]
+    }
+  },
+  "$defs": {
+    "ParserInfo": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "StatementMeta": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "institution": { "type": "string" },
+        "institution_code": { "type": ["string", "null"] },
+        "account_holder": { "type": ["string", "null"] },
+        "currency": { "type": "string" },
+        "period_from": { "type": ["string", "null"] },
+        "period_to": { "type": ["string", "null"] }
+      }
+    },
+    "Account": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["transactions"],
+      "properties": {
+        "name": { "type": "string" },
+        "account_no": { "type": "string" },
+        "account_type": {
+          "type": "string",
+          "enum": ["current", "credit_card", "ewallet", "fixed_deposit", "srs", "unit_trust", "unknown"]
+        },
+        "currency": { "type": "string" },
+        "account_holder": { "type": ["string", "null"] },
+        "opening_balance": { "type": ["number", "null"] },
+        "closing_balance": { "type": ["number", "null"] },
+        "balance": { "type": ["number", "null"] },
+        "balance_sgd": { "type": ["number", "null"] },
+        "transactions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Transaction" }
+        },
+        "fd_records": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/FixedDepositRecord" }
+        },
+        "investment_holdings": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/InvestmentHolding" }
+        },
+        "extras": { "type": ["object", "null"], "additionalProperties": true }
+      }
+    },
+    "Transaction": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "txn_id": { "type": "string", "description": "Deterministic content hash — use for cross-source de-duplication." },
+        "posted_date": { "type": "string" },
+        "value_date": { "type": ["string", "null"] },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "fx_rate": { "type": ["number", "null"] },
+        "base_amount": { "type": ["number", "null"] },
+        "base_currency": { "type": "string" },
+        "interest_amount": { "type": ["number", "null"] },
+        "description": { "type": "string" },
+        "raw_description": { "type": "string" },
+        "counterparty": { "type": ["string", "null"] },
+        "counterparty_account": { "type": ["string", "null"] },
+        "category_hint": { "type": ["string", "null"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "is_accrual": { "type": "boolean" },
+        "is_reversal": { "type": "boolean" },
+        "is_transfer": { "type": "boolean" },
+        "related_txn_id": { "type": ["string", "null"] },
+        "source_account": {
+          "oneOf": [{ "$ref": "#/$defs/SourceAccount" }, { "type": "null" }]
+        },
+        "balance_after": { "type": ["number", "null"] },
+        "extras": { "type": ["object", "null"], "additionalProperties": true },
+        "_debug": {
+          "oneOf": [{ "$ref": "#/$defs/DebugInfo" }, { "type": "null" }]
+        }
+      }
+    },
+    "SourceAccount": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "number": { "type": ["string", "null"] },
+        "currency": { "type": ["string", "null"] }
+      }
+    },
+    "DebugInfo": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "raw_pdf_text": { "type": ["string", "null"] },
+        "classification_rules": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "FixedDepositRecord": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "deposit_no": { "type": "string" },
+        "value_date": { "type": ["string", "null"] },
+        "maturity_date": { "type": ["string", "null"] },
+        "interest_rate": { "type": ["number", "null"] },
+        "raw_interest_rate": { "type": ["string", "null"] },
+        "interest_amount": { "type": ["number", "null"] },
+        "principal": { "type": "number" },
+        "currency": { "type": "string" }
+      }
+    },
+    "InvestmentHolding": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "units": { "type": "string" },
+        "currency": { "type": "string" },
+        "unit_price": { "type": "string" },
+        "valuation": { "type": "string" },
+        "cost": { "type": "string" },
+        "unrealised_pl": { "type": "string" }
+      }
+    },
+    "CreditCardSummary": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "payment_due_date": { "type": ["string", "null"] },
+        "credit_limit": { "type": ["string", "null"] },
+        "available_credit": { "type": ["string", "null"] },
+        "minimum_due": { "type": ["string", "null"] },
+        "previous_balance": { "type": ["string", "null"] },
+        "total_amount_due": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

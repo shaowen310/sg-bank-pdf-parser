@@ -104,6 +104,35 @@ bank codes, reference numbers). PDF artifacts like fused brackets are cleaned.
 Per-bank Markdown layout details are intentionally not duplicated here — see the
 source renderers and `references/` (below).
 
+## Public IR Contract
+
+The `*.ir.json` output is the **supported downstream interface** for this skill.
+Two authoritative definitions of the contract exist:
+
+1. **Python (source of truth)** — `sg_bank_pdf_parser/ir_schema.py`
+   (`ParsedStatement` and friends, with `to_json()` / `from_json()`).
+2. **Language-agnostic** — `references/ir.schema.json` (JSON Schema 2020-12),
+   for validating IR produced/consumed by non-Python tools.
+
+### Compatibility rule
+- Every IR carries an `ir_version` string. Downstream consumers **must** require
+  `ir_version >= "2026.3"`.
+- `from_json()` / `from_dict()` **reject** any IR that lacks the `accounts`
+  field (i.e. IR produced by parsers older than 2026.3). Callers must re-run
+  extraction from the source PDF.
+- When merging multiple IRs, carry forward the **minimum** `ir_version` you
+  observe so the result stays consumable by the same minimum-version consumers.
+
+### Field contract (summary)
+- Top level requires: `ir_version`, `accounts`.
+- `Account.account_type` is constrained to the `AccountType` vocabulary
+  (`current`, `credit_card`, `ewallet`, `fixed_deposit`, `srs`, `unit_trust`,
+  `unknown`). `AccountType.normalize` coerces unknown values to `unknown`.
+- `Transaction.txn_id` is a deterministic content hash — use it for cross-source
+  de-duplication.
+- `balance_sgd` (when present) is the only cross-currency-comparable balance;
+  native `balance` is per-`currency`.
+
 ## Architecture
 
 1. **Raw PDF parsing** (`parsers/*_parser.py`) — bank-specific `pdfplumber`
