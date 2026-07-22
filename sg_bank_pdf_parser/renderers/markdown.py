@@ -825,10 +825,9 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
         out.append("|------|--------|---------|------------|---------|")
         tot_w = tot_d = 0.0
         for t in txns:
+            # Remark column keeps the original PDF remark verbatim — the linked
+            # fixed-deposit reference is intentionally NOT rendered here.
             desc = md_masked_description(t.description, do_mask=do_mask)
-            fd_link = (t.extras or {}).get("fd_link")
-            if fd_link:
-                desc = f"{desc} (FD {fd_link.get('fd_account_no', '')} · #{fd_link.get('deposit_no', '')})"
             if t.amount > 0:
                 d = t.amount
                 w = 0.0
@@ -884,10 +883,9 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
                 out.append("| Date | Remark | Deposit | Withdrawal | Balance |")
                 out.append("|------|--------|---------|------------|---------|")
                 for t in a.transactions:
+                    # Original PDF remark verbatim — FD reference intentionally
+                    # not rendered.
                     desc = md_masked_description(t.description, do_mask=do_mask)
-                    fd_link = (t.extras or {}).get("fd_link")
-                    if fd_link:
-                        desc = f"{desc} (FD {fd_link.get('fd_account_no', '')} · #{fd_link.get('deposit_no', '')})"
                     if t.amount > 0:
                         d = t.amount
                         w = 0.0
