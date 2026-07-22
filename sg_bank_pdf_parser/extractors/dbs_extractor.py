@@ -83,7 +83,6 @@ class DBSExtractor(BaseExtractor):
                 ))
             return holdings
 
-        srs_account_added = False
         for acct in accounts:
             acct_no = str(acct.get("account_no", ""))
             name = str(acct.get("name", ""))
@@ -91,12 +90,6 @@ class DBSExtractor(BaseExtractor):
             is_srs = (name == "SRS Account") or (acct_no in srs_by_no)
 
             if is_srs:
-                # SRS is a first-class account: it owns a balance and its
-                # transactions like any other account, but additionally owns a
-                # list of investment holdings (unit trusts). The summary-derived
-                # cash balance comes from srs_data (the SRS account number is
-                # not in the page-0 CASA table).
-                srs_account_added = True
                 cash_balance_raw = srs_data.get("cash_balance", "")
                 srs_balance = _parse_float(cash_balance_raw) if cash_balance_raw else None
                 account_type = AccountType.SRS
@@ -259,27 +252,6 @@ class DBSExtractor(BaseExtractor):
                         is_accrual=False,
                         balance_after=balance,
                     )
-
-        # ---- SRS fallback ----
-        # The SRS account normally comes from the page-4 transaction section
-        # (handled in the loop above). If that section is absent but srs_data
-        # was parsed from page 1, still emit a first-class SRS account carrying
-        # its balance, holdings, and contributions (with no transactions).
-        if srs_data and not srs_account_added:
-            cash_balance_raw = srs_data.get("cash_balance", "")
-            srs_balance = _parse_float(cash_balance_raw) if cash_balance_raw else None
-            _ = builder.add_account(
-                name="SRS Account",
-                account_no=str(srs_data.get("account_no", "")),
-                account_type=AccountType.SRS.value,
-                currency=base_ccy,
-                balance=srs_balance,
-                investment_holdings=_srs_holdings(),
-                extras={
-                    "total": srs_data.get("total", ""),
-                    "contributions": srs_data.get("contributions", {}),
-                },
-            )
 
         return builder.build()
 
