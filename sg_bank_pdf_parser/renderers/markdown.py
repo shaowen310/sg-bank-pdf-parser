@@ -669,8 +669,14 @@ def ocbc_card_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True
 
     card_acct = statement.accounts[0] if statement.accounts else None
     all_txns = [t for a in statement.accounts for t in a.transactions]
-    total_charges = sum(t.base_amount for t in all_txns if t.base_amount > 0)
-    total_credits = sum(t.base_amount for t in all_txns if t.base_amount < 0)
+    total_charges = sum(
+        t.base_amount for t in all_txns
+        if t.base_amount is not None and t.base_amount > 0
+    )
+    total_credits = sum(
+        t.base_amount for t in all_txns
+        if t.base_amount is not None and t.base_amount < 0
+    )
 
     out: list[str] = []
     card_name = meta.account_holder or "Credit Card"

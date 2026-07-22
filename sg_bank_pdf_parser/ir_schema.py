@@ -123,7 +123,7 @@ class Transaction:
     amount: float = 0.0            # Signed amount in transaction currency
     currency: str = ""             # Transaction currency (ISO 4217)
     fx_rate: float | None = None   # Exchange rate (only for foreign-currency txns)
-    base_amount: float = 0.0       # Equivalent in base currency
+    base_amount: float | None = None  # Equivalent in base currency (None for same-currency txns)
     base_currency: str = ""        # Base currency (copied from StatementMeta)
     # Interest leg of an FD closure / premature withdrawal (SGD). Carried on the
     # FD-account transaction so the linker can match the funding-account credit
@@ -290,7 +290,7 @@ def _transaction_from_dict(td: dict[str, Any]) -> Transaction:
         amount=td.get("amount", 0.0),
         currency=td.get("currency", ""),
         fx_rate=td.get("fx_rate"),
-        base_amount=td.get("base_amount", 0.0),
+        base_amount=td.get("base_amount"),
         base_currency=td.get("base_currency", ""),
         interest_amount=td.get("interest_amount"),
         description=td.get("description", ""),

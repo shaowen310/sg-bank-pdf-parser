@@ -33,7 +33,12 @@ import pdfplumber
 from pdfplumber.pdf import PDF as PDFType
 
 from .ir_schema import ParsedStatement, from_json as ir_from_json
-from .postprocess import fill_fd_running_balances, link_fd_to_ca
+from .postprocess import (
+    fill_fd_running_balances,
+    link_fd_to_ca,
+    verify_fd_interest_consistency,
+    verify_fx_base_amount,
+)
 
 from .renderers.markdown import MD_RENDERER_REGISTRY
 
@@ -258,6 +263,8 @@ def main() -> None:
         ir = ir_from_json(json_str)
         ir = fill_fd_running_balances(ir)
         ir = link_fd_to_ca(ir)
+        ir = verify_fd_interest_consistency(ir)
+        ir = verify_fx_base_amount(ir)
         print(f"Loaded IR: {in_path}  ({sum(len(a.transactions) for a in ir.accounts)} txns, parser: {ir.parser.name})")
         if ir_only:
             return  # validate only, do nothing
@@ -289,6 +296,8 @@ def main() -> None:
     ir = extractor.to_ir(in_path)
     ir = fill_fd_running_balances(ir)
     ir = link_fd_to_ca(ir)
+    ir = verify_fd_interest_consistency(ir)
+    ir = verify_fx_base_amount(ir)
 
     # Write IR JSON (unmasked raw data)
     ir_path = out_path.with_suffix(".ir.json")

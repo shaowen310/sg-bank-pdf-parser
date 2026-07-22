@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 
 from .account_type import AccountType
+from .common import verify_fd_interest
 from .ir_schema import ParsedStatement, Transaction
 
 # Opening a new FD deposit (increases outstanding principal).
@@ -153,4 +154,59 @@ def link_fd_to_ca(statement: ParsedStatement) -> ParsedStatement:
                 }
                 break
 
+    return statement
+
+
+def verify_fd_interest_consistency(statement: ParsedStatement) -> ParsedStatement:
+    """Verify every fixed-deposit interest amount against principal × rate × tenor.
+
+    Runs on both the fresh-extraction and IR-reload paths, so ``--ir-only``
+    re-validates FD interest even when the builder was never re-run. Idempotent:
+    a warning already present in ``statement.warnings`` (e.g. loaded from a saved
+    ``.ir.json``) is not re-appended.
+
+    Mutates and returns *statement*.
+    """
+    for acct in statement.accounts:
+        if acct.account_type != AccountType.FIXED_DEPOSIT:
+            continue
+        for rec in (acct.fd_records or []):
+            warn = verify_fd_interest(
+                principal=rec.principal,
+                interest_rate=rec.interest_rate,
+                value_date=rec.value_date,
+                maturity_date=rec.maturity_date,
+                interest_amount=rec.interest_amount,
+            )
+            if warn and warn not in statement.warnings:
+                statement.warnings.append(warn)
+    return statement
+
+
+def verify_fx_base_amount(statement: ParsedStatement) -> ParsedStatement:
+    """Verify that an explicit ``base_amount`` matches ``amount × fx_rate``.
+
+    When a transaction carries both ``base_amount`` and ``fx_rate``, the explicit
+    base_amount wins but its consistency against the FX rate is verified. This
+    runs on every pipeline path (the builder no longer emits this warning), so it
+    is checked on fresh extraction and on IR reload. Idempotent: an already-present
+    warning is not re-appended.
+
+    Mutates and returns *statement*.
+    """
+    for acct in statement.accounts:
+        for txn in (acct.transactions or []):
+            base_amount = txn.base_amount
+            fx_rate = txn.fx_rate
+            if base_amount is None or fx_rate is None:
+                continue
+            expected = round(float(txn.amount or 0.0) * fx_rate, 2)
+            if abs(base_amount - expected) > 0.01:
+                warn = (
+                    f"base_amount mismatch: {base_amount} != {txn.amount} × "
+                    f"{fx_rate} = {expected} (diff={abs(base_amount - expected):.4f}), "
+                    f"using explicit base_amount"
+                )
+                if warn not in statement.warnings:
+                    statement.warnings.append(warn)
     return statement
