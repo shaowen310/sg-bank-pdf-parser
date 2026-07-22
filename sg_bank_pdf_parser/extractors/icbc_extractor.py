@@ -11,7 +11,7 @@ from typing import Any, ClassVar, override
 
 from ..account_type import AccountType
 from .base import BaseExtractor
-from ..ir_schema import ParsedStatement, Transaction
+from ..ir_schema import ParsedStatement
 from ..parsers.icbc_parser import CATxnRow, FDTxnRow
 
 
@@ -160,60 +160,7 @@ class ICBCExtractor(BaseExtractor):
                     }},
                 )
 
-        statement = builder.build()
-        _link_icbc_fd_to_ca(statement)
-        return statement
-
-
-def _link_icbc_fd_to_ca(statement: ParsedStatement) -> None:
-    """Link the FD-table-built principal transaction to its Current Account twin.
-
-    - **Principal leg (bidirectional):** for each FD-account ``fd_principal``
-      transaction, find the CA transaction on the same date whose amount sums to
-      zero with it (opposite sign, equal magnitude) and set ``related_txn_id`` on
-      both. The CA twin is tagged ``fd_principal`` for traceability.
-    - **Interest leg:** intentionally NOT matched against the FD table's interest
-      amount, because a premature withdrawal changes the actual interest credited
-      (penalty / reduced rate), making the scalar match unreliable. Interest
-      reconciliation is left for manual review.
-    """
-    fd_accounts = [a for a in statement.accounts
-                   if a.account_type == AccountType.FIXED_DEPOSIT.value]
-    if not fd_accounts:
-        return
-
-    # Candidate CA transactions (exclude FD accounts themselves).
-    ca_txns: list[Transaction] = []
-    for acct in statement.accounts:
-        if acct.account_type == AccountType.FIXED_DEPOSIT.value:
-            continue
-        ca_txns.extend(acct.transactions)
-
-    # --- Principal leg: bidirectional related_txn_id ---
-    for acct in fd_accounts:
-        for fd_txn in acct.transactions:
-            if "fd_principal" not in (fd_txn.tags or []):
-                continue
-            for ca_txn in ca_txns:
-                if ca_txn.related_txn_id:
-                    continue
-                if ca_txn.posted_date != fd_txn.posted_date:
-                    continue
-                if abs(ca_txn.amount + fd_txn.amount) > 1e-6:
-                    continue
-                fd_txn.related_txn_id = ca_txn.txn_id
-                ca_txn.related_txn_id = fd_txn.txn_id
-                ca_txn.category_hint = "fixed_deposit"
-                ca_txn.is_transfer = True
-                ca_txn.tags = list(ca_txn.tags) + ["fd_principal"]
-                ca_txn.extras = {
-                    **(ca_txn.extras or {}),
-                    "fd_link": {
-                        "fd_account_no": (fd_txn.extras or {}).get("fd_link", {}).get("fd_account_no", ""),
-                        "deposit_no": (fd_txn.extras or {}).get("fd_link", {}).get("deposit_no", ""),
-                    },
-                }
-                break
+        return builder.build()
 
 
 def _icbc_date_to_iso(date_str: str) -> str:

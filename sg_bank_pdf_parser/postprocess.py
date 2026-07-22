@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 from .account_type import AccountType
-from .ir_schema import ParsedStatement
+from .ir_schema import ParsedStatement, Transaction
 
 # Opening a new FD deposit (increases outstanding principal).
 _FD_OPEN_RE = re.compile(r"new|rollover|placement|top[- ]?up|open", re.I)
@@ -81,4 +81,76 @@ def fill_fd_running_balances(statement: ParsedStatement) -> ParsedStatement:
             f"'{acct.name}' ({acct.account_no}): opening {opening:,.2f} "+
             f"across {len(txns)} transactions."
         )
+    return statement
+
+
+def link_fd_to_ca(statement: ParsedStatement) -> ParsedStatement:
+    """Link fixed-deposit principal movements to their funding-account twin.
+
+    In a consolidated statement a placement / rollover / withdrawal of a fixed
+    deposit is usually printed twice — once in the FIXED_DEPOSIT account and once
+    as a transaction in the funding current/savings account on the same day with
+    the opposite sign and equal magnitude. This pass tags the funding-account twin
+    for traceability and sets ``related_txn_id`` bidirectionally so downstream
+    consumers can collapse the double-count.
+
+    Bank-agnostic: works for any extractor that emits FIXED_DEPOSIT accounts with
+    transactions — e.g. ICBC and DBS. It links *every* FD-account transaction
+    regardless of tag, because FD accounts only ever carry principal movements
+    (interest is modelled separately, so it never appears as an FD transaction to
+    match). No-op when there are no FD accounts, and idempotent on reload (skips
+    txns that already carry a ``related_txn_id``).
+
+    A closure can carry interest: the FD transaction then also carries an
+    ``interest_amount`` and is tagged ``fd_interest``. The funding-account credit
+    equals ``principal + interest``, so the match compares
+    ``CA amount + FD principal - interest`` to zero. Both atomic tags
+    (``fd_principal`` and, when present, ``fd_interest``) are copied onto the twin.
+
+    Mutates and returns *statement*.
+    """
+    fd_accounts = [a for a in statement.accounts
+                   if a.account_type == AccountType.FIXED_DEPOSIT.value]
+    if not fd_accounts:
+        return statement
+
+    # Candidate funding transactions (exclude FD accounts themselves).
+    funding_txns: list[Transaction] = []
+    for acct in statement.accounts:
+        if acct.account_type == AccountType.FIXED_DEPOSIT.value:
+            continue
+        funding_txns.extend(acct.transactions)
+
+    # --- Principal (+interest) leg: bidirectional related_txn_id ---
+    for acct in fd_accounts:
+        for fd_txn in acct.transactions:
+            interest = fd_txn.interest_amount or 0.0
+            for ca_txn in funding_txns:
+                if ca_txn.related_txn_id:
+                    continue
+                if ca_txn.posted_date != fd_txn.posted_date:
+                    continue
+                # CA credit equals the FD principal (net of any interest leg).
+                if abs(ca_txn.amount + fd_txn.amount - interest) > 1e-6:
+                    continue
+                fd_txn.related_txn_id = ca_txn.txn_id
+                ca_txn.related_txn_id = fd_txn.txn_id
+                ca_txn.category_hint = "fixed_deposit"
+                ca_txn.is_transfer = True
+                # Copy FD tags onto the twin, deduped (both fd_principal and,
+                # when present, fd_interest).
+                for tg in (fd_txn.tags or []):
+                    if tg not in ca_txn.tags:
+                        ca_txn.tags = list(ca_txn.tags) + [tg]
+                ca_txn.extras = {
+                    **(ca_txn.extras or {}),
+                    "fd_link": {
+                        "fd_account_no": acct.account_no,
+                        "deposit_no": (fd_txn.extras or {})
+                        .get("fd_link", {}).get("deposit_no", ""),
+                        "matched_on": "principal (+interest) == -CA amount",
+                    },
+                }
+                break
+
     return statement

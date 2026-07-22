@@ -125,6 +125,10 @@ class Transaction:
     fx_rate: float | None = None   # Exchange rate (only for foreign-currency txns)
     base_amount: float = 0.0       # Equivalent in base currency
     base_currency: str = ""        # Base currency (copied from StatementMeta)
+    # Interest leg of an FD closure / premature withdrawal (SGD). Carried on the
+    # FD-account transaction so the linker can match the funding-account credit
+    # (principal + interest) against the bare principal leg. None when N/A.
+    interest_amount: float | None = None
 
     # === Description ===
     description: str = ""          # Cleaned / masked short description
@@ -288,6 +292,7 @@ def _transaction_from_dict(td: dict[str, Any]) -> Transaction:
         fx_rate=td.get("fx_rate"),
         base_amount=td.get("base_amount", 0.0),
         base_currency=td.get("base_currency", ""),
+        interest_amount=td.get("interest_amount"),
         description=td.get("description", ""),
         raw_description=td.get("raw_description", ""),
         counterparty=td.get("counterparty"),

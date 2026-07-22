@@ -160,3 +160,101 @@ def test_dbs_fd_premature_penalty_continuation_flips_to_movement():
     assert fd[0]["txn_type"] == "movement"
     assert fd[0]["deposit_no"] == "123456789012"
     assert "Interest Due To Premature Withdrawal" in fd[0]["description"]
+
+
+def test_transaction_interest_amount_roundtrip():
+    """``interest_amount`` is a first-class field and must survive to_dict/from_dict."""
+    from sg_bank_pdf_parser.ir_schema import from_json, to_json
+
+    builder = IRBuilder("test_smoke", "1.0")
+    _ = builder.set_meta(institution="TEST", currency="SGD")
+    _ = (
+        builder.add_account(name="FD", account_no="FD1", account_type="fixed_deposit")
+        .add_transaction(
+            posted_date="2026-06-02",
+            amount=-10245.0,
+            tags=["fd_principal", "fd_interest"],
+            interest_amount=0.03,
+        )
+    )
+    stmt = builder.build()
+
+    restored = from_json(to_json(stmt))
+    txn = restored.accounts[0].transactions[0]
+    assert txn.interest_amount == 0.03
+    assert txn.tags == ["fd_principal", "fd_interest"]
+
+
+def test_link_fd_to_ca_closure_with_interest():
+    """Closure w/ interest: the CA twin carries BOTH atomic tags (fd_principal +
+    fd_interest) and links bidirectionally. CA credit == principal + interest."""
+    from sg_bank_pdf_parser.account_type import AccountType
+    from sg_bank_pdf_parser.postprocess import link_fd_to_ca
+
+    builder = IRBuilder("test_smoke", "1.0")
+    _ = builder.set_meta(institution="TEST", currency="SGD")
+    _ = (
+        builder.add_account(name="FD", account_no="FD1",
+                            account_type=AccountType.FIXED_DEPOSIT.value)
+        .add_transaction(
+            posted_date="2026-06-02",
+            amount=-10245.0,
+            tags=["fd_principal", "fd_interest"],
+            interest_amount=0.03,
+            extras={"fd_link": {"deposit_no": "123"}},
+        )
+    )
+    _ = (
+        builder.add_account(name="CA", account_no="CA1")
+        .add_transaction(
+            posted_date="2026-06-02",
+            amount=10245.03,
+            tags=["ca_twin"],
+        )
+    )
+    stmt = builder.build()
+    link_fd_to_ca(stmt)
+
+    fd_txn = stmt.accounts[0].transactions[0]
+    ca_txn = stmt.accounts[1].transactions[0]
+    assert fd_txn.related_txn_id == ca_txn.txn_id
+    assert ca_txn.related_txn_id == fd_txn.txn_id
+    assert ca_txn.is_transfer is True
+    assert ca_txn.category_hint == "fixed_deposit"
+    assert "fd_principal" in ca_txn.tags
+    assert "fd_interest" in ca_txn.tags
+    assert sorted(set(ca_txn.tags)) == ["ca_twin", "fd_interest", "fd_principal"]
+
+
+def test_link_fd_to_ca_principal_only():
+    """Principal-only placement (e.g. ICBC / new placement): the CA twin gets
+    fd_principal only, no interest leg, and still links."""
+    from sg_bank_pdf_parser.account_type import AccountType
+    from sg_bank_pdf_parser.postprocess import link_fd_to_ca
+
+    builder = IRBuilder("test_smoke", "1.0")
+    _ = builder.set_meta(institution="TEST", currency="SGD")
+    _ = (
+        builder.add_account(name="FD", account_no="FD1",
+                            account_type=AccountType.FIXED_DEPOSIT.value)
+        .add_transaction(
+            posted_date="2026-06-02",
+            amount=-10000.0,
+            tags=["fd_principal"],
+        )
+    )
+    _ = (
+        builder.add_account(name="CA", account_no="CA1")
+        .add_transaction(
+            posted_date="2026-06-02",
+            amount=10000.0,
+            tags=["ca_twin"],
+        )
+    )
+    stmt = builder.build()
+    link_fd_to_ca(stmt)
+
+    ca_txn = stmt.accounts[1].transactions[0]
+    assert ca_txn.related_txn_id is not None
+    assert "fd_principal" in ca_txn.tags
+    assert "fd_interest" not in ca_txn.tags
