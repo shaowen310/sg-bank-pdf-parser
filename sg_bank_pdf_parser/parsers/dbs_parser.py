@@ -148,8 +148,8 @@ def parse_dbs(pdf: PDF) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, 
 
     # --- Summary data ---
     summary: dict[str, Any] = {
-        "deposits": [],        # [{name, account_no, currency, balance, balance_sgd}]
-        "fixed_deposits": [],  # [{name, account_no, balance_sgd}]
+        "deposits": [],        # [{name, account_no, currency, balance}]
+        "fixed_deposits": [],  # [{name, account_no, balance}]
         "casa_total": "",
         "fd_total": "",
     }
@@ -312,7 +312,6 @@ def _parse_page0_summary(lines: list[list[WordDict]], meta: dict[str, Any], summ
             "account_no": acct_no,
             "currency": ccy,
             "balance": base_balance or sgd_balance,
-            "balance_sgd": sgd_balance or base_balance,
         }
 
         if in_fd:

@@ -84,27 +84,25 @@ def dbs_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> s
 
         if cash_rows:
             out.append("### Current and Savings Accounts\n")
-            out.append("| Account | Account No. | Currency | Balance | Balance (SGD) |")
-            out.append("|---------|-------------|----------|---------|---------------|")
+            out.append("| Account | Account No. | Currency | Balance |")
+            out.append("|---------|-------------|----------|---------|")
             for row in cash_rows:
                 bal_str = f"{row.balance:,.2f}" if row.balance is not None else "—"
-                bal_sgd_str = f"{row.balance_sgd:,.2f}" if row.balance_sgd is not None else "—"
                 out.append(
                     f"| {row.name} | {mask_id(row.account_no, do_mask=do_mask)} | {row.currency or '—'} | "
-                    + f"{bal_str} | {bal_sgd_str} |"
+                    + f"{bal_str} |"
                 )
             out.append("")
 
         if fd_rows:
             out.append("### Fixed Deposits (Time Deposits)\n")
-            out.append("| Account | Account No. | Currency | Balance | Balance (SGD) |")
-            out.append("|---------|-------------|----------|---------|---------------|")
+            out.append("| Account | Account No. | Currency | Balance |")
+            out.append("|---------|-------------|----------|---------|")
             for row in fd_rows:
                 bal_str = f"{row.balance:,.2f}" if row.balance is not None else "—"
-                bal_sgd_str = f"{row.balance_sgd:,.2f}" if row.balance_sgd is not None else "—"
                 out.append(
                     f"| {row.name} | {mask_id(row.account_no, do_mask=do_mask)} | {row.currency or '—'} | "
-                    + f"{bal_str} | {bal_sgd_str} |"
+                    + f"{bal_str} |"
                 )
             out.append("")
 

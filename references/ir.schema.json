@@ -70,7 +70,6 @@
         "opening_balance": { "type": ["number", "null"] },
         "closing_balance": { "type": ["number", "null"] },
         "balance": { "type": ["number", "null"] },
-        "balance_sgd": { "type": ["number", "null"] },
         "transactions": {
           "type": "array",
           "items": { "$ref": "#/$defs/Transaction" }

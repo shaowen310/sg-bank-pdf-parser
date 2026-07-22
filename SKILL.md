@@ -130,8 +130,8 @@ Two authoritative definitions of the contract exist:
   `unknown`). `AccountType.normalize` coerces unknown values to `unknown`.
 - `Transaction.txn_id` is a deterministic content hash — use it for cross-source
   de-duplication.
-- `balance_sgd` (when present) is the only cross-currency-comparable balance;
-  native `balance` is per-`currency`.
+- `balance` is per-`currency`; SGD-equivalent values are computed via FX rates
+  in downstream renderers.
 
 ## Architecture
 

@@ -108,7 +108,6 @@ class DBSExtractor(BaseExtractor):
                     currency=str(acct.get("currency", base_ccy)),
                     opening_balance=_parse_float(acct.get("opening_balance")),
                     balance=srs_balance,
-                    balance_sgd=srs_balance,
                     investment_holdings=_srs_holdings(),
                     extras={
                         "total": srs_data.get("total", ""),
@@ -126,7 +125,6 @@ class DBSExtractor(BaseExtractor):
                     currency=str(acct.get("currency", base_ccy)),
                     opening_balance=_parse_float(acct.get("opening_balance")),
                     balance=_parse_float(bal.get("balance")),
-                    balance_sgd=_parse_float(bal.get("balance_sgd")),
                 )
             else:
                 bal = deposit_by_no.get(acct_no, {})
@@ -139,7 +137,6 @@ class DBSExtractor(BaseExtractor):
                     currency=str(acct.get("currency", base_ccy)),
                     opening_balance=_parse_float(acct.get("opening_balance")),
                     balance=_parse_float(bal.get("balance")),
-                    balance_sgd=_parse_float(bal.get("balance_sgd")),
                 )
 
             prev_fd_date = ""
@@ -277,7 +274,6 @@ class DBSExtractor(BaseExtractor):
                 account_type=AccountType.SRS.value,
                 currency=base_ccy,
                 balance=srs_balance,
-                balance_sgd=srs_balance,
                 investment_holdings=_srs_holdings(),
                 extras={
                     "total": srs_data.get("total", ""),
