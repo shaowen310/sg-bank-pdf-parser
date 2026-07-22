@@ -187,14 +187,18 @@ class DBSExtractor(BaseExtractor):
                     if eff_date:
                         prev_fd_date = eff_date
 
+                    # Placement branch — funds placed INTO the FD (cash IN).
                     if is_placement:
                         is_renewal = bool(re.search(r"renew", description, re.I))
                         # A maturity closure carries realised interest; the FD
                         # transaction then models BOTH legs (principal + interest).
                         is_closure = bool(interest_amount)
-                        fd_tags = (
-                            ["fd_principal", "fd_interest"] if is_closure else ["fd_principal"]
-                        )
+                        # Interest-only credit (zero principal leg) models the
+                        # interest disbursement only → fd_interest, not fd_principal.
+                        if is_closure and not principal:
+                            fd_tags = ["fd_interest"]
+                        else:
+                            fd_tags = ["fd_principal", "fd_interest"] if is_closure else ["fd_principal"]
                         _ = builder.add_fd_record(
                             deposit_no=deposit_no,
                             value_date=value_date_iso,
@@ -219,13 +223,17 @@ class DBSExtractor(BaseExtractor):
                             balance_after=balance,
                             extras={"fd_link": fd_link},
                         )
+                    # Withdrawal branch — premature withdrawal / closure paying OUT
+                    # of the FD (cash OUT).
                     else:
-                        neg = bool(re.search(r"withdraw|premature", description, re.I))
+                        is_withdrawal = bool(re.search(r"withdraw|premature", description, re.I))
                         # Premature withdrawal closes the FD. Tag both legs when the
                         # closure carries interest; a rare standalone interest-only
                         # credit (no withdrawal) is tagged fd_interest only.
-                        is_closure = neg
-                        if is_closure and interest_amount:
+                        is_closure = is_withdrawal
+                        if is_closure and not principal and interest_amount:
+                            fd_tags = ["fd_interest"]
+                        elif is_closure and interest_amount:
                             fd_tags = ["fd_principal", "fd_interest"]
                         elif is_closure:
                             fd_tags = ["fd_principal"]
@@ -235,7 +243,7 @@ class DBSExtractor(BaseExtractor):
                             fd_tags = []
                         _ = builder.add_transaction(
                             posted_date=eff_date,
-                            amount=-principal if neg else principal,
+                            amount=-principal if is_withdrawal else principal,
                             currency=currency,
                             description=description,
                             raw_description=description,
