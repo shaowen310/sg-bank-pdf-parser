@@ -31,14 +31,6 @@ class ParserInfo:
 
 
 @dataclass
-class SourceAccount:
-    """The account that owns a transaction."""
-    name: str | None = None      # e.g. "DBS Multiplier"
-    number: str | None = None    # masked or original account number
-    currency: str | None = None  # ISO 4217
-
-
-@dataclass
 class DebugInfo:
     """Optional debug data attached to a transaction.
 
@@ -149,12 +141,6 @@ class Transaction:
 
     # === Relationship ===
     related_txn_id: str | None = None
-
-    # === Source account ===
-    # Optional. Extractors no longer set this (transactions are nested inside a
-    # first-class Account). Retained for backward compat with cross-account
-    # related_txn_id cases where the counterparty account is recorded.
-    source_account: SourceAccount | None = None
 
     # === Balance ===
     balance_after: float | None = None
@@ -303,7 +289,6 @@ def _transaction_from_dict(td: dict[str, Any]) -> Transaction:
         is_reversal=td.get("is_reversal", False),
         is_transfer=td.get("is_transfer", False),
         related_txn_id=td.get("related_txn_id"),
-        source_account=SourceAccount(**td["source_account"]) if td.get("source_account") else None,
         balance_after=td.get("balance_after"),
         extras=td.get("extras"),
         _debug=DebugInfo(**td["_debug"]) if td.get("_debug") else None,

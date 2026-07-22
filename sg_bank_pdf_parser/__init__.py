@@ -10,7 +10,7 @@ Usage:
     # Python: python -m sg_bank_pdf_parser input.pdf
 """
 
-from .ir_schema import ParsedStatement, Transaction, StatementMeta, SourceAccount
+from .ir_schema import ParsedStatement, Transaction, StatementMeta
 from .convert_statement import detect_type, main
 
 __version__ = "0.1.0"
@@ -18,7 +18,6 @@ __all__ = [
     "ParsedStatement",
     "Transaction",
     "StatementMeta",
-    "SourceAccount",
     "detect_type",
     "main",
 ]

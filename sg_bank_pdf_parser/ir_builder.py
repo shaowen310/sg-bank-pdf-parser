@@ -50,7 +50,6 @@ from .ir_schema import (
     InvestmentHolding,
     ParsedStatement,
     ParserInfo,
-    SourceAccount,
     StatementMeta,
     Transaction,
     generate_txn_id,
@@ -252,7 +251,6 @@ class IRBuilder:
         is_reversal: bool = False,
         is_transfer: bool = False,
         related_txn_id: str | None = None,
-        source_account: SourceAccount | None = None,
         balance_after: float | None = None,
         extras: dict[str, Any] | None = None,
         _debug: DebugInfo | None = None,
@@ -264,9 +262,6 @@ class IRBuilder:
           - If *only* ``base_amount`` given → use it directly (no fx_rate needed).
           - If *only* ``fx_rate`` given → ``base_amount = round(amount * fx_rate, 2)``.
           - If *neither* given → ``base_amount = amount`` (single-currency transaction).
-
-        ``source_account`` is optional and no longer auto-derived from statement
-        metadata (transactions are now nested inside an ``Account``).
         """
         if self._active_account is None:
             # Guard: ensure there is always an account to hold the transaction.
@@ -307,7 +302,6 @@ class IRBuilder:
             is_reversal=is_reversal,
             is_transfer=is_transfer,
             related_txn_id=related_txn_id,
-            source_account=source_account,
             balance_after=balance_after,
             extras=extras,
             _debug=_debug,
@@ -403,7 +397,6 @@ class IRBuilder:
             is_reversal=row.get("is_reversal", False),
             is_transfer=row.get("is_transfer", False),
             related_txn_id=row.get("related_txn_id"),
-            source_account=row.get("source_account"),
             balance_after=row.get("balance_after"),
             extras=row.get("extras"),
         )
