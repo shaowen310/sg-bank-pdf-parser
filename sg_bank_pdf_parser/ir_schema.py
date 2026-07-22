@@ -189,6 +189,7 @@ class Account:
     account_type: str = "unknown"              # AccountType vocabulary
     currency: str = ""
     account_holder: str | None = None          # account-level holder (if distinct)
+    institution: str | None = None             # owning bank/institution (set by consolidation)
 
     # Balances: opening/closing are txn-derived; balance/balance_sgd are summary-derived.
     opening_balance: float | None = None
@@ -305,6 +306,7 @@ def _account_from_dict(ad: dict[str, Any]) -> Account:
         account_type=ad.get("account_type", "unknown"),
         currency=ad.get("currency", ""),
         account_holder=ad.get("account_holder"),
+        institution=ad.get("institution"),
         opening_balance=ad.get("opening_balance"),
         closing_balance=ad.get("closing_balance"),
         balance=ad.get("balance"),
