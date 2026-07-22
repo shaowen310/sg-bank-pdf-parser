@@ -52,7 +52,9 @@ class ICBCExtractor(BaseExtractor):
 
         sd = str(meta.get("statement_date", ""))
         if sd:
-            _ = builder.set_period(sd, sd)
+            # ICBC statement_date: "2026/06/30" (YYYY/MM/DD) → ISO.
+            sd_iso = _icbc_date_to_iso(sd)
+            _ = builder.set_period(sd_iso, sd_iso)
 
         # ---- Populate reminders and notes (in extras for ICBC) ----
         extras: dict[str, object] = {}

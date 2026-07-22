@@ -75,8 +75,9 @@ class OCBCConsolidatedExtractor(BaseExtractor):
 
         sd = str(meta.get("statement_date", ""))
         if sd:
-            # OCBC date: "04 JUN 2026"
-            _ = builder.set_period(sd, sd)  # single date; no range exposed
+            # OCBC consolidated date: "04 JUN 2026" (DD Mon YYYY) → ISO.
+            sd_iso = _ocbc_maturity_to_iso(sd) or sd
+            _ = builder.set_period(sd_iso, sd_iso)  # single date; no range exposed
 
         # Group transactions into per-account buckets (OCBC bank statements can
         # list multiple accounts in one statement).
