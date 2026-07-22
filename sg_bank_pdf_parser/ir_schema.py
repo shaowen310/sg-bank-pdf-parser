@@ -140,7 +140,11 @@ class Transaction:
     is_transfer: bool = False  # Transfer between accounts (inferable from single statement)
 
     # === Relationship ===
-    related_txn_id: str | None = None
+    # IDs of transactions in other accounts that this one is the twin of
+    # (e.g. a fixed-deposit principal+interest move and its funding-account
+    # credit). A list because one transaction can match several — a CA
+    # placement may pair with both an FD principal leg and an FD interest leg.
+    related_txn_ids: list[str] = field(default_factory=list)
 
     # === Balance ===
     balance_after: float | None = None
@@ -288,7 +292,7 @@ def _transaction_from_dict(td: dict[str, Any]) -> Transaction:
         is_accrual=td.get("is_accrual", False),
         is_reversal=td.get("is_reversal", False),
         is_transfer=td.get("is_transfer", False),
-        related_txn_id=td.get("related_txn_id"),
+        related_txn_ids=td.get("related_txn_ids") or [],
         balance_after=td.get("balance_after"),
         extras=td.get("extras"),
         _debug=DebugInfo(**td["_debug"]) if td.get("_debug") else None,

@@ -92,21 +92,24 @@ def link_fd_to_ca(statement: ParsedStatement) -> ParsedStatement:
     deposit is usually printed twice — once in the FIXED_DEPOSIT account and once
     as a transaction in the funding current/savings account on the same day with
     the opposite sign and equal magnitude. This pass tags the funding-account twin
-    for traceability and sets ``related_txn_id`` bidirectionally so downstream
-    consumers can collapse the double-count.
+    for traceability and sets ``related_txn_ids`` (a list) bidirectionally so
+    downstream consumers can collapse the double-count.
 
     Bank-agnostic: works for any extractor that emits FIXED_DEPOSIT accounts with
     transactions — e.g. ICBC and DBS. It links *every* FD-account transaction
     regardless of tag, because FD accounts only ever carry principal movements
     (interest is modelled separately, so it never appears as an FD transaction to
     match). No-op when there are no FD accounts, and idempotent on reload (skips
-    txns that already carry a ``related_txn_id``).
+    txns that already carry a ``related_txn_ids`` entry for this group).
 
-    A closure can carry interest: the FD transaction then also carries an
-    ``interest_amount`` and is tagged ``fd_interest``. The funding-account credit
-    equals ``principal + interest``, so the match compares
-    ``CA amount + FD principal - interest`` to zero. Both atomic tags
-    (``fd_principal`` and, when present, ``fd_interest``) are copied onto the twin.
+    A closure can carry interest. In the combined-row model the FD transaction
+    carries an ``interest_amount`` and is tagged ``fd_interest``; the
+    funding-account credit equals ``principal + interest``, so the match compares
+    ``CA amount`` against the sum of ``|FD principal| + interest``. In the
+    separate-leg model the principal and interest are emitted as two FD
+    transactions (``fd_principal`` and ``fd_interest``); the CA credit equals
+    their combined ``|amount|`` and the CA twin links to *both* legs. Either way,
+    both atomic tags are copied onto the twin.
 
     Mutates and returns *statement*.
     """
@@ -122,39 +125,124 @@ def link_fd_to_ca(statement: ParsedStatement) -> ParsedStatement:
             continue
         funding_txns.extend(acct.transactions)
 
-    # --- Principal (+interest) leg: bidirectional related_txn_id ---
     for acct in fd_accounts:
+        # Group this FD account's transactions by (deposit_no, posted_date).
+        groups: dict[tuple[str, str], list[Transaction]] = {}
         for fd_txn in acct.transactions:
-            interest = fd_txn.interest_amount or 0.0
+            if not fd_txn.posted_date:
+                continue
+            deposit_no = (fd_txn.extras or {}).get("fd_link", {}).get(
+                "deposit_no", ""
+            )
+            groups.setdefault((deposit_no, fd_txn.posted_date), []).append(fd_txn)
+
+        for (deposit_no, posted_date), fd_legs in groups.items():
+            # Magnitude the funding-account twin must equal: sum of each leg's
+            # principal amount plus any interest. On a combined row, interest is
+            # separate from ``amount``; on a standalone interest leg it is folded
+            # into ``interest_amount`` (with amount 0) — adding ``interest_amount``
+            # keeps both cases correct.
+            total_mag = sum(
+                abs(t.amount) + (t.interest_amount or 0.0) for t in fd_legs
+            )
+            if total_mag <= 0:
+                continue
+
+            # PASS 1: split CA credits — each FD leg matches a *distinct* CA
+            # credit on the same day whose |amount| equals that leg's magnitude
+            # (principal, plus interest when carried on the leg). Used by DBS
+            # maturities, which emit the principal and interest as two separate
+            # CA credits.
+            consumed: set[int] = set()
+            leg_ca: dict[str, Transaction] = {}
+            for fl in fd_legs:
+                leg_mag = abs(fl.amount) + (fl.interest_amount or 0.0)
+                if leg_mag <= 0:
+                    continue
+                for idx, ca_txn in enumerate(funding_txns):
+                    if idx in consumed or ca_txn.posted_date != posted_date:
+                        continue
+                    if abs(ca_txn.amount - leg_mag) > 1e-6:
+                        continue
+                    consumed.add(idx)
+                    leg_ca[fl.txn_id] = ca_txn
+                    break
+
+            if len(leg_ca) == len(fd_legs):
+                for fl in fd_legs:
+                    if fl.txn_id in leg_ca:
+                        _link_fd_ca(
+                            leg_ca[fl.txn_id], fl,
+                            matched_on="CA amount == FD leg (principal + interest)",
+                        )
+                continue
+
+            # PASS 2: combined CA credit — a single CA credit on the same day
+            # equals the summed magnitude of all FD legs (ICBC, premature
+            # withdrawals, closures with interest on one row).
+            combined: Transaction | None = None
             for ca_txn in funding_txns:
-                if ca_txn.related_txn_id:
+                if ca_txn.posted_date != posted_date:
                     continue
-                if ca_txn.posted_date != fd_txn.posted_date:
+                if abs(ca_txn.amount - total_mag) > 1e-6:
                     continue
-                # CA credit equals the FD principal (net of any interest leg).
-                if abs(ca_txn.amount + fd_txn.amount - interest) > 1e-6:
-                    continue
-                fd_txn.related_txn_id = ca_txn.txn_id
-                ca_txn.related_txn_id = fd_txn.txn_id
-                ca_txn.category_hint = "fixed_deposit"
-                ca_txn.is_transfer = True
-                # Copy FD tags onto the twin, deduped (both fd_principal and,
-                # when present, fd_interest).
-                for tg in (fd_txn.tags or []):
-                    if tg not in ca_txn.tags:
-                        ca_txn.tags = list(ca_txn.tags) + [tg]
-                ca_txn.extras = {
-                    **(ca_txn.extras or {}),
-                    "fd_link": {
-                        "fd_account_no": acct.account_no,
-                        "deposit_no": (fd_txn.extras or {})
-                        .get("fd_link", {}).get("deposit_no", ""),
-                        "matched_on": "principal (+interest) == -CA amount",
-                    },
-                }
+                combined = ca_txn
                 break
+            if combined is not None:
+                for fl in fd_legs:
+                    _link_fd_ca(
+                        combined, fl,
+                        matched_on="CA amount == sum(FD legs: principal + interest)",
+                    )
+                continue
+
+            # PASS 3: no matching CA twin at all. Link whatever split-matched
+            # above, then treat the remaining legs as internal FD movements
+            # (renewal / rollover) that never leave the account: they are NOT
+            # transfers, so clear the (extractor-set) flag to suppress the false
+            # "transfer without linked twin" warning.
+            for fl in fd_legs:
+                if fl.txn_id in leg_ca:
+                    _link_fd_ca(
+                        leg_ca[fl.txn_id], fl,
+                        matched_on="CA amount == FD leg (principal + interest)",
+                    )
+                else:
+                    fl.is_transfer = False
 
     return statement
+
+
+def _link_fd_ca(ca_txn: Transaction, fd_leg: Transaction,
+                matched_on: str = "") -> None:
+    """Record a bidirectional FD <-> CA transfer link on both transactions.
+
+    Marks both the funding-account twin and the FD leg as ``is_transfer`` and
+    cross-links their ``related_txn_ids`` (deduped). FD atomic tags
+    (``fd_principal`` / ``fd_interest``) are copied onto the twin, and the
+    ``fd_link`` extras are mirrored for traceability.
+    """
+    ca_txn.category_hint = "fixed_deposit"
+    ca_txn.is_transfer = True
+    fd_leg.is_transfer = True
+    if fd_leg.txn_id not in ca_txn.related_txn_ids:
+        ca_txn.related_txn_ids.append(fd_leg.txn_id)
+    if ca_txn.txn_id not in fd_leg.related_txn_ids:
+        fd_leg.related_txn_ids.append(ca_txn.txn_id)
+    # Copy FD tags (fd_principal / fd_interest) from the leg onto the twin, deduped.
+    for tg in (fd_leg.tags or []):
+        if tg not in ca_txn.tags:
+            ca_txn.tags = list(ca_txn.tags) + [tg]
+    # Mirror the fd_link extras onto the twin for traceability.
+    fd_link = (fd_leg.extras or {}).get("fd_link", {})
+    ca_txn.extras = {
+        **(ca_txn.extras or {}),
+        "fd_link": {
+            "fd_account_no": fd_link.get("fd_account_no", ""),
+            "deposit_no": fd_link.get("deposit_no", ""),
+            "matched_on": matched_on,
+        },
+    }
 
 
 def verify_fd_interest_consistency(statement: ParsedStatement) -> ParsedStatement:
@@ -206,6 +294,63 @@ def verify_fx_base_amount(statement: ParsedStatement) -> ParsedStatement:
                     f"base_amount mismatch: {base_amount} != {txn.amount} × "
                     f"{fx_rate} = {expected} (diff={abs(base_amount - expected):.4f}), "
                     f"using explicit base_amount"
+                )
+                if warn not in statement.warnings:
+                    statement.warnings.append(warn)
+    return statement
+
+
+def verify_transfer_links(statement: ParsedStatement) -> ParsedStatement:
+    """Verify that every transfer transaction references its linked twins.
+
+    A transaction flagged ``is_transfer`` is one side of a matched pair/group
+    (e.g. a fixed-deposit placement and its funding-account twin). Two checks
+    apply:
+
+    * A transfer must carry at least one id in ``related_txn_ids``; an empty
+      list means the linker failed to find the other side, which would let the
+      move be double-counted downstream.
+    * The links must be symmetric: if A marks B as related, B must also mark A
+      as related. A one-sided link indicates the linker only updated one side
+      (e.g. a missed twin), again risking double-counting.
+
+    Runs on every pipeline path (fresh extraction and IR reload) so a saved
+    ``.ir.json`` whose links were lost is still flagged. Idempotent: an
+    already-present warning is not re-appended.
+
+    Mutates and returns *statement*.
+    """
+    # Index every transaction by id so we can resolve related_txn_ids.
+    txn_by_id: dict[str, Transaction] = {}
+    for acct in statement.accounts:
+        for txn in (acct.transactions or []):
+            if txn.txn_id:
+                txn_by_id[txn.txn_id] = txn
+
+    for acct in statement.accounts:
+        for txn in (acct.transactions or []):
+            if not txn.is_transfer:
+                continue
+            if not txn.related_txn_ids:
+                warn = (
+                    f"transfer without linked twin: txn {txn.txn_id!r} "
+                    f"(account {acct.account_no}, {txn.posted_date}, amount "
+                    f"{txn.amount}) is_transfer=true but related_txn_ids is empty"
+                )
+                if warn not in statement.warnings:
+                    statement.warnings.append(warn)
+                continue
+            # Symmetric-link check: every twin that A names must name A back.
+            for twin_id in txn.related_txn_ids:
+                twin = txn_by_id.get(twin_id)
+                if twin is None:
+                    continue
+                if txn.txn_id in twin.related_txn_ids:
+                    continue
+                warn = (
+                    f"transfer link not reciprocal: txn {txn.txn_id!r} "
+                    f"(account {acct.account_no}) lists {twin_id!r} as related "
+                    f"but {twin_id!r} does not list it back"
                 )
                 if warn not in statement.warnings:
                     statement.warnings.append(warn)
