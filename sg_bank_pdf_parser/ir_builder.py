@@ -25,7 +25,6 @@ Usage inside an Extractor::
             amount=-50.00,
             currency="SGD",
             description=row["desc"],
-            raw_description=row["raw"],
             is_accrual=False,
             balance_after=12600.00,
         )
@@ -240,7 +239,6 @@ class IRBuilder:
         base_amount: float | None = None,
         interest_amount: float | None = None,
         description: str = "",
-        raw_description: str = "",
         value_date: str | None = None,
         fx_rate: float | None = None,
         counterparty: str | None = None,
@@ -293,7 +291,6 @@ class IRBuilder:
             base_currency=base_currency,
             interest_amount=interest_amount,
             description=description,
-            raw_description=raw_description,
             counterparty=counterparty,
             counterparty_account=counterparty_account,
             category_hint=category_hint,
@@ -376,7 +373,7 @@ class IRBuilder:
 
         Keys recognised (all optional, missing keys get defaults):
         ``posted_date``, ``amount``, ``currency``, ``base_amount``,
-        ``description``, ``raw_description``, ``value_date``, ``counterparty``,
+        ``description``, ``value_date``, ``counterparty``,
         ``counterparty_account``, ``balance_after``, ``fx_rate``, ``is_accrual``,
         ``extras``.
         """
@@ -386,7 +383,6 @@ class IRBuilder:
             currency=row.get("currency", ""),
             base_amount=row.get("base_amount"),
             description=row.get("description", ""),
-            raw_description=row.get("raw_description", ""),
             value_date=row.get("value_date"),
             fx_rate=row.get("fx_rate"),
             counterparty=row.get("counterparty"),

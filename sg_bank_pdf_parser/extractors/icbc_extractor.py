@@ -98,7 +98,6 @@ class ICBCExtractor(BaseExtractor):
                     amount=amount,
                     currency=ccy,
                     description=str(t.get("remark", "")),
-                    raw_description=str(t.get("remark", "")),
                     is_accrual=False,
                     balance_after=balance,
                 )

@@ -123,8 +123,7 @@ class Transaction:
     interest_amount: float | None = None
 
     # === Description ===
-    description: str = ""          # Cleaned / masked short description
-    raw_description: str = ""      # Original unmasked text (for audit)
+    description: str = ""
 
     # === Counterparty ===
     counterparty: str | None = None
@@ -284,7 +283,6 @@ def _transaction_from_dict(td: dict[str, Any]) -> Transaction:
         base_currency=td.get("base_currency", ""),
         interest_amount=td.get("interest_amount"),
         description=td.get("description", ""),
-        raw_description=td.get("raw_description", ""),
         counterparty=td.get("counterparty"),
         counterparty_account=td.get("counterparty_account"),
         category_hint=td.get("category_hint"),

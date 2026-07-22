@@ -199,7 +199,7 @@ def _render_dbs_standard_account(out: list[str], acct: "Account", do_mask: bool 
         out.append("|------|-------------|------------|---------|---------|")
         tot_w = tot_d = 0.0
         for t in txns:
-            desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+            desc = md_masked_description(t.description, do_mask=do_mask)
             if t.amount < 0:
                 w = abs(t.amount)
                 d = 0.0
@@ -258,7 +258,7 @@ def _render_dbs_fd_account(out: list[str], acct: "Account", do_mask: bool = True
         out.append("| Date | Description | Withdrawal | Deposit | Balance |")
         out.append("|------|-------------|------------|---------|---------|")
         for t in txns:
-            desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+            desc = md_masked_description(t.description, do_mask=do_mask)
             if t.amount < 0:
                 w_amt, d_amt = abs(t.amount), 0.0
             else:
@@ -303,7 +303,7 @@ def uob_txn_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) 
     tot_w = tot_d = 0.0
     txns = acct.transactions if acct else []
     for t in txns:
-        desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+        desc = md_masked_description(t.description, do_mask=do_mask)
         if t.amount < 0:
             w = abs(t.amount)
             d = 0.0
@@ -534,7 +534,7 @@ def uob_one_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) 
         out.append("|------|-------------|-------------|----------|---------|")
         tot_w = tot_d = 0.0
         for t in txns:
-            desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+            desc = md_masked_description(t.description, do_mask=do_mask)
             if t.amount < 0:
                 w = abs(t.amount)
                 d = 0.0
@@ -602,7 +602,7 @@ def ocbc_consolidated_ir_to_markdown(statement: ParsedStatement, *, do_mask: boo
         out.append("|----------|------------|-------------|--------|------------|---------|---------|")
         tot_w = tot_d = 0.0
         for t in txns:
-            desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+            desc = md_masked_description(t.description, do_mask=do_mask)
             if t.amount < 0:
                 w = abs(t.amount)
                 d = 0.0
@@ -751,7 +751,7 @@ def ocbc_card_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True
             fc = f"{t.currency} {abs(t.amount):,.2f}"
         else:
             fc = ""
-        desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+        desc = md_masked_description(t.description, do_mask=do_mask)
         amount_display = f"{t.base_amount:,.2f}"
         out.append(
             f"| {t.posted_date} | {desc} | {fc} | {amount_display} |"
@@ -825,7 +825,7 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
         out.append("|------|--------|---------|------------|---------|")
         tot_w = tot_d = 0.0
         for t in txns:
-            desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+            desc = md_masked_description(t.description, do_mask=do_mask)
             fd_link = (t.extras or {}).get("fd_link")
             if fd_link:
                 desc = f"{desc} (FD {fd_link.get('fd_account_no', '')} · #{fd_link.get('deposit_no', '')})"
@@ -884,7 +884,7 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
                 out.append("| Date | Remark | Deposit | Withdrawal | Balance |")
                 out.append("|------|--------|---------|------------|---------|")
                 for t in a.transactions:
-                    desc = md_masked_description(t.description or t.raw_description, do_mask=do_mask)
+                    desc = md_masked_description(t.description, do_mask=do_mask)
                     fd_link = (t.extras or {}).get("fd_link")
                     if fd_link:
                         desc = f"{desc} (FD {fd_link.get('fd_account_no', '')} · #{fd_link.get('deposit_no', '')})"

@@ -214,7 +214,6 @@ class DBSExtractor(BaseExtractor):
                             amount=-principal if (is_renewal or is_closure) else principal,
                             currency=currency,
                             description=description or f"FD {deposit_no}".strip(),
-                            raw_description=description,
                             is_accrual=False,
                             is_transfer=True,
                             category_hint="fixed_deposit",
@@ -246,7 +245,6 @@ class DBSExtractor(BaseExtractor):
                             amount=-principal if is_withdrawal else principal,
                             currency=currency,
                             description=description,
-                            raw_description=description,
                             is_accrual=False,
                             is_transfer=True,
                             category_hint="fixed_deposit",
@@ -261,7 +259,6 @@ class DBSExtractor(BaseExtractor):
                         amount=amount,
                         currency=str(t.get("currency", base_ccy)),
                         description=description,
-                        raw_description=description,
                         is_accrual=False,
                         balance_after=balance,
                     )

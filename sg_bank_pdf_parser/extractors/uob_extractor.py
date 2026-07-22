@@ -116,7 +116,6 @@ class UOBTxnExtractor(BaseExtractor):
                 amount=amount,
                 currency=base_ccy,
                 description=str(t.get("description", "")),
-                raw_description=str(t.get("description", "")),
                 is_accrual=False,
                 balance_after=balance,
             )
@@ -208,7 +207,6 @@ class UOBOneExtractor(BaseExtractor):
                     amount=amount,
                     currency=str(acct.get("currency", base_ccy)),
                     description=str(t.get("description", "")),
-                    raw_description=str(t.get("description", "")),
                     is_accrual=False,
                     balance_after=balance,
                 )

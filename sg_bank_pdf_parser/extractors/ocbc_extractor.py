@@ -105,7 +105,6 @@ class OCBCConsolidatedExtractor(BaseExtractor):
                     amount=amount,
                     currency=base_ccy,
                     description=str(t.get("description", "")),
-                    raw_description=str(t.get("description", "")),
                     value_date=str(t.get("value_date", "")) or None,
                     is_accrual=False,
                     balance_after=balance,
@@ -218,7 +217,6 @@ class OCRCCardExtractor(BaseExtractor):
                 currency=currency,
                 base_amount=sgd_amount if currency != "SGD" else None,
                 description=str(t.get("description", "")),
-                raw_description=str(t.get("description", "")),
                 is_accrual=is_accrual,
             )
 

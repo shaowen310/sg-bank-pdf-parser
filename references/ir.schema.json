@@ -100,7 +100,6 @@
         "base_currency": { "type": "string" },
         "interest_amount": { "type": ["number", "null"] },
         "description": { "type": "string" },
-        "raw_description": { "type": "string" },
         "counterparty": { "type": ["string", "null"] },
         "counterparty_account": { "type": ["string", "null"] },
         "category_hint": { "type": ["string", "null"] },
