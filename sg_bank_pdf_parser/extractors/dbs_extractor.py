@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import ClassVar, override
+from typing import Any, ClassVar, override
 
 from ..account_type import AccountType
 from .base import BaseExtractor
@@ -62,10 +62,13 @@ class DBSExtractor(BaseExtractor):
             except ValueError:
                 pass  # silent fallback — period remains empty
 
-        # Build per-account balance lookups keyed by account number so each
-        # Account can absorb its summary-derived balance (replacing the old
-        # flat account_summary table).
-        deposit_by_no = {str(d.get("account_no", "")): d for d in summary.get("deposits", [])}
+        # Build per-account balance lookups keyed by (account_no, currency) so
+        # multi-currency accounts (e.g. My Account SGD vs USD) with the same
+        # account number are distinguished correctly.
+        deposit_by_ckey: dict[tuple[str, str], dict[str, Any]] = {}
+        for d in summary.get("deposits", []):
+            ckey = (str(d.get("account_no", "")), str(d.get("currency", "")))
+            deposit_by_ckey[ckey] = d
         fd_by_no = {str(d.get("account_no", "")): d for d in summary.get("fixed_deposits", [])}
         srs_by_no = {str(srs_data.get("account_no", ""))} if srs_data.get("account_no") else set()
 
@@ -120,7 +123,8 @@ class DBSExtractor(BaseExtractor):
                     balance=_parse_float(bal.get("balance")),
                 )
             else:
-                bal = deposit_by_no.get(acct_no, {})
+                ckey = (acct_no, str(acct.get("currency", base_ccy)))
+                bal = deposit_by_ckey.get(ckey, {})
                 account_type = AccountType.CURRENT
                 txn_list = acct.get("transactions", [])
                 _ = builder.add_account(

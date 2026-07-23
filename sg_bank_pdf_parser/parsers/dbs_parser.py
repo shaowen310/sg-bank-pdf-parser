@@ -243,7 +243,14 @@ def _parse_page0_summary(lines: list[list[WordDict]], meta: dict[str, Any], summ
     #   Account  Account No.  Balance  Balance
     #           (Base Currency)  (SGD Equivalent)
     # We detect that sub-header to switch from CASA → FD.
+    #
+    # Multi-currency "My Account" rows: the first row carries the account number
+    # and SGD values; the second row (same visual line group) carries only the
+    # foreign-currency data (e.g. "USD 0.10 0.12") with no account number.
+    # We track the last CASA name + account_no so sub-rows can inherit them.
     in_fd = False
+    last_casa_name = ""
+    last_casa_acct_no = ""
 
     for ln in lines:
         text = _line_text(ln)
@@ -266,6 +273,31 @@ def _parse_page0_summary(lines: list[list[WordDict]], meta: dict[str, Any], summ
             and DBS_ACCT_NO_RE.search(w["text"])
         ]
         if not acct_no_words:
+            # Multi-currency sub-row: no account number, but may carry a
+            # foreign-currency balance that belongs to the previous CASA account.
+            # Only inherit when the previous account was a CASA (not FD).
+            if not in_fd and last_casa_acct_no:
+                # Check if this line has a currency code and bank numbers
+                sub_ccy = ""
+                sub_base = ""
+                sub_sgd = ""
+                for w in ln:
+                    if not is_bank_num(w["text"]) and re.match(r"^[A-Z]{3}$", w["text"]):
+                        sub_ccy = w["text"]
+                        continue
+                    if not is_bank_num(w["text"]):
+                        continue
+                    if DBS_SUMMARY_BAL_SGD_X1[0] <= w["x1"] <= DBS_SUMMARY_BAL_SGD_X1[1]:
+                        sub_sgd = w["text"]
+                    elif DBS_SUMMARY_BAL_BASE_X1[0] <= w["x1"] <= DBS_SUMMARY_BAL_BASE_X1[1]:
+                        sub_base = w["text"]
+                if sub_ccy and (sub_base or sub_sgd):
+                    summary["deposits"].append({
+                        "name": last_casa_name,
+                        "account_no": last_casa_acct_no,
+                        "currency": sub_ccy,
+                        "balance": sub_base or sub_sgd,
+                    })
             continue
 
         acct_no = acct_no_words[0]["text"]
@@ -318,6 +350,9 @@ def _parse_page0_summary(lines: list[list[WordDict]], meta: dict[str, Any], summ
             summary["fixed_deposits"].append(record)
         else:
             summary["deposits"].append(record)
+            # Track last CASA account so multi-currency sub-rows can inherit it
+            last_casa_name = name
+            last_casa_acct_no = acct_no
 
 
 # ============================================================================
