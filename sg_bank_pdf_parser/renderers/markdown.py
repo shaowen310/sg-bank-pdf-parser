@@ -87,26 +87,12 @@ def dbs_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> s
             out.append("| Account | Account No. | Currency | Balance |")
             out.append("|---------|-------------|----------|---------|")
             for row in cash_rows:
-                bal_str = f"{row.balance:,.2f}" if row.balance is not None else "—"
-                out.append(
-                    f"| {row.name} | {mask_id(row.account_no, do_mask=do_mask)} | {row.currency or '—'} | "
-                    + f"{bal_str} |"
-                )
-            out.append("")
-
-        if fd_rows:
+                bal_str = f"{row.closing_balance:,.2f}" if row.closing_balance is not None else "—"
             out.append("### Fixed Deposits (Time Deposits)\n")
             out.append("| Account | Account No. | Currency | Balance |")
             out.append("|---------|-------------|----------|---------|")
             for row in fd_rows:
-                bal_str = f"{row.balance:,.2f}" if row.balance is not None else "—"
-                out.append(
-                    f"| {row.name} | {mask_id(row.account_no, do_mask=do_mask)} | {row.currency or '—'} | "
-                    + f"{bal_str} |"
-                )
-            out.append("")
-
-    # --- Supplementary Retirement Scheme ---
+                bal_str = f"{row.closing_balance:,.2f}" if row.closing_balance is not None else "—"
     if srs_acct is not None:
         srs_extras = srs_acct.extras or {}
         srs_total = srs_extras.get("total", "")
@@ -116,7 +102,7 @@ def dbs_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> s
         out.append(f"**Total (SGD):** {srs_total or '—'}\n")
         out.append("| Account | Account No. | Cash Balance (SGD) |")
         out.append("|---------|-------------|---------------------|")
-        bal_str = f"{srs_acct.balance:,.2f}" if srs_acct.balance is not None else "—"
+        bal_str = f"{srs_acct.closing_balance:,.2f}" if srs_acct.closing_balance is not None else "—"
         out.append(
             f"| SRS Account | {mask_id(srs_acct.account_no, do_mask=do_mask)} | {bal_str} |"
         )
@@ -352,7 +338,7 @@ def uob_portfolio_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = 
             if row.account_type == AccountType.UNIT_TRUST:
                 continue  # unit trust account carries no cash balance
             ccy = row.currency or "SGD"
-            ccy_deposits[ccy] = ccy_deposits.get(ccy, 0.0) + (row.balance or 0.0)
+            ccy_deposits[ccy] = ccy_deposits.get(ccy, 0.0) + (row.closing_balance or 0.0)
 
         out.append("## Portfolio Overview\n")
         out.append("| Item | Currency | Amount |")
@@ -390,7 +376,7 @@ def uob_portfolio_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = 
             ex = a.extras or {}
             ie = ex.get("interest_earned") or "—"
             ic = ex.get("interest_charged") or "—"
-            bal = f"{a.balance:,.2f}" if a.balance is not None else "—"
+            bal = f"{a.closing_balance:,.2f}" if a.closing_balance is not None else "—"
             cr_line = ex.get("credit_line") or "—"
             out.append(
                 f"| {a.name} | {mask_id(a.account_no, do_mask=do_mask)} | "
@@ -458,7 +444,7 @@ def uob_one_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) 
         ccy_balances: dict[str, float] = {}
         for row in ext:
             ccy = row.currency or "SGD"
-            ccy_balances[ccy] = ccy_balances.get(ccy, 0.0) + (row.balance or 0.0)
+            ccy_balances[ccy] = ccy_balances.get(ccy, 0.0) + (row.closing_balance or 0.0)
 
         out.append("## Account Overview\n")
         out.append("| Currency | Balance |")
@@ -484,7 +470,7 @@ def uob_one_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) 
             ex = a.extras or {}
             ie = ex.get("interest_earned") or "—"
             ic = ex.get("interest_charged") or "—"
-            bal = f"{a.balance:,.2f}" if a.balance is not None else "—"
+            bal = f"{a.closing_balance:,.2f}" if a.closing_balance is not None else "—"
             cr_line = ex.get("credit_line") or "—"
             out.append(
                 f"| {a.name} | {mask_id(a.account_no, do_mask=do_mask)} | "
@@ -792,8 +778,7 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
         out.append("| A/c Type | Account No. | CCY | Balance |")
         out.append("|----------|-------------|-----|---------|")
         for a in ca_accounts:
-            bal_str = f"{a.balance:,.2f}" if a.balance is not None else "—"
-            out.append(f"| {a.name} | {mask_id(a.account_no, do_mask=do_mask)} | {a.currency} | {bal_str} |")
+            bal_str = f"{a.closing_balance:,.2f}" if a.closing_balance is not None else "—"
         out.append("")
 
     if fd_accounts:
@@ -801,7 +786,7 @@ def icbc_ir_to_markdown(statement: ParsedStatement, *, do_mask: bool = True) -> 
         out.append("| Account No. | CCY | Balance | Status |")
         out.append("|-------------|-----|---------|--------|")
         for a in fd_accounts:
-            bal_str = f"{a.balance:,.2f}" if a.balance is not None else "—"
+            bal_str = f"{a.closing_balance:,.2f}" if a.closing_balance is not None else "—"
             out.append(f"| {mask_id(a.account_no, do_mask=do_mask)} | {a.currency} | {bal_str} | Active |")
         out.append("")
 

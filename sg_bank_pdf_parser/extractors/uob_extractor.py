@@ -190,7 +190,7 @@ class UOBOneExtractor(BaseExtractor):
                 account_no=acc_no,
                 account_type=_uob_account_type(acc_name),
                 currency=str(acct.get("currency", base_ccy)),
-                balance=_parse_amount(dep.get("balance")),
+                closing_balance=_parse_amount(dep.get("balance")),
                 extras={"credit_line": dep.get("credit_line"),
                         "interest_earned": dep.get("interest_earned"),
                         "interest_charged": dep.get("interest_charged"),
@@ -273,7 +273,7 @@ class UOBPortfolioExtractor(BaseExtractor):
                 account_no=str(d.get("account_no", "")),
                 account_type=_uob_account_type(str(d.get("name", ""))),
                 currency=str(d.get("currency", "")),
-                balance=_parse_amount(d.get("balance")),
+                closing_balance=_parse_amount(d.get("balance")),
                 extras={
                     "credit_line": d.get("credit_line"),
                     "interest_earned": d.get("interest_earned"),

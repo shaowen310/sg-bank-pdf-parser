@@ -84,7 +84,7 @@ class ICBCExtractor(BaseExtractor):
                 account_no=acct_no,
                 account_type=AccountType.CURRENT.value,
                 currency=ccy,
-                balance=_icbc_parse_balance(row.get("balance")),
+                closing_balance=_icbc_parse_balance(row.get("balance")),
             )
             for t in txns:
                 withdrawal = float(str(t.get("withdrawal", "0") or "0").replace(",", ""))
@@ -117,7 +117,7 @@ class ICBCExtractor(BaseExtractor):
                 account_no=acct_no,
                 account_type=AccountType.FIXED_DEPOSIT.value,
                 currency=str(row.get("ccy", "SGD")),
-                balance=_icbc_parse_balance(row.get("balance")),
+                closing_balance=_icbc_parse_balance(row.get("balance")),
             )
             for t in txns:
                 # The FD table's "+Deposit / -Withdrawal" column carries the

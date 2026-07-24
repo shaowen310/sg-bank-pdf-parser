@@ -191,10 +191,9 @@ class Account:
     account_holder: str | None = None          # account-level holder (if distinct)
     institution: str | None = None             # owning bank/institution (set by consolidation)
 
-    # Balances: opening/closing are txn-derived; balance is summary-derived.
+    # Balances: opening/closing may be txn-derived or summary-derived.
     opening_balance: float | None = None
     closing_balance: float | None = None
-    balance: float | None = None
 
     transactions: list[Transaction] = field(default_factory=list)
 
@@ -308,7 +307,6 @@ def _account_from_dict(ad: dict[str, Any]) -> Account:
         institution=ad.get("institution"),
         opening_balance=ad.get("opening_balance"),
         closing_balance=ad.get("closing_balance"),
-        balance=ad.get("balance"),
         transactions=[_transaction_from_dict(t) for t in ad.get("transactions", [])],
         fd_records=(
             [_fd_record_from_dict(r) for r in ad["fd_records"]]

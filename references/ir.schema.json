@@ -69,7 +69,6 @@
         "account_holder": { "type": ["string", "null"] },
         "opening_balance": { "type": ["number", "null"] },
         "closing_balance": { "type": ["number", "null"] },
-        "balance": { "type": ["number", "null"] },
         "transactions": {
           "type": "array",
           "items": { "$ref": "#/$defs/Transaction" }

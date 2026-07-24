@@ -34,8 +34,10 @@ from pdfplumber.pdf import PDF as PDFType
 
 from .ir_schema import ParsedStatement, from_json as ir_from_json
 from .postprocess import (
+    fill_account_balances,
     fill_fd_running_balances,
     link_fd_to_ca,
+    verify_account_balances,
     verify_fd_interest_consistency,
     verify_fx_base_amount,
     verify_transfer_links,
@@ -263,7 +265,9 @@ def main() -> None:
         json_str = in_path.read_text(encoding="utf-8")
         ir = ir_from_json(json_str)
         ir = fill_fd_running_balances(ir)
+        ir = fill_account_balances(ir)
         ir = link_fd_to_ca(ir)
+        ir = verify_account_balances(ir)
         ir = verify_fd_interest_consistency(ir)
         ir = verify_fx_base_amount(ir)
         ir = verify_transfer_links(ir)
@@ -297,7 +301,9 @@ def main() -> None:
     extractor = ir_cls()
     ir = extractor.to_ir(in_path)
     ir = fill_fd_running_balances(ir)
+    ir = fill_account_balances(ir)
     ir = link_fd_to_ca(ir)
+    ir = verify_account_balances(ir)
     ir = verify_fd_interest_consistency(ir)
     ir = verify_fx_base_amount(ir)
     ir = verify_transfer_links(ir)

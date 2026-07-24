@@ -103,7 +103,7 @@ class DBSExtractor(BaseExtractor):
                     account_type=account_type.value,
                     currency=str(acct.get("currency", base_ccy)),
                     opening_balance=_parse_float(acct.get("opening_balance")),
-                    balance=srs_balance,
+                    closing_balance=srs_balance,
                     investment_holdings=_srs_holdings(),
                     extras={
                         "total": srs_data.get("total", ""),
@@ -120,7 +120,7 @@ class DBSExtractor(BaseExtractor):
                     account_type=account_type.value,
                     currency=str(acct.get("currency", base_ccy)),
                     opening_balance=_parse_float(acct.get("opening_balance")),
-                    balance=_parse_float(bal.get("balance")),
+                    closing_balance=_parse_float(bal.get("balance")),
                 )
             else:
                 ckey = (acct_no, str(acct.get("currency", base_ccy)))
@@ -133,7 +133,7 @@ class DBSExtractor(BaseExtractor):
                     account_type=account_type.value,
                     currency=str(acct.get("currency", base_ccy)),
                     opening_balance=_parse_float(acct.get("opening_balance")),
-                    balance=_parse_float(bal.get("balance")),
+                    closing_balance=_parse_float(bal.get("balance")),
                 )
 
             prev_fd_date = ""

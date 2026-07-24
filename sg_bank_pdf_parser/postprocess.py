@@ -245,6 +245,129 @@ def _link_fd_ca(ca_txn: Transaction, fd_leg: Transaction,
     }
 
 
+def fill_account_balances(statement: ParsedStatement) -> ParsedStatement:
+    """Derive missing ``opening_balance`` / ``closing_balance`` from transactions.
+
+    For accounts with transactions:
+      * If ``closing_balance`` is None but the last transaction carries
+        ``balance_after``, populate it from that value.
+      * If ``opening_balance`` is None but ``closing_balance`` is available,
+        derive ``opening_balance = closing_balance - Σtxn.amount`` and emit a
+        warning that the opening balance was derived.
+
+    For accounts without transactions:
+      * If only ``opening_balance`` → set ``closing_balance = opening_balance``.
+      * If only ``closing_balance`` → set ``opening_balance = closing_balance``.
+
+    UNIT_TRUST accounts are skipped (they carry investment holdings, not monetary
+    balances).
+
+    Mutates and returns *statement*.
+    """
+    for acct in statement.accounts:
+        if acct.account_type == AccountType.UNIT_TRUST.value:
+            continue
+        txns = acct.transactions or []
+
+        if txns:
+            sorted_txns = sorted(txns, key=lambda t: t.posted_date or "")
+            total_amount = sum(float(t.amount or 0.0) for t in sorted_txns)
+
+            # Fill closing_balance from last txn's balance_after if missing
+            if acct.closing_balance is None:
+                last_ba = sorted_txns[-1].balance_after
+                if last_ba is not None:
+                    acct.closing_balance = last_ba
+
+            # Derive opening_balance from closing_balance if missing
+            if acct.opening_balance is None and acct.closing_balance is not None:
+                derived_opening = float(acct.closing_balance) - total_amount
+                acct.opening_balance = derived_opening
+                warn = (
+                    f"opening_balance for account '{acct.name}' ({acct.account_no}) "
+                    f"derived from closing_balance and transactions: "
+                    f"{acct.closing_balance:,.2f} - {total_amount:,.2f} = "
+                    f"{derived_opening:,.2f}"
+                )
+                if warn not in statement.warnings:
+                    statement.warnings.append(warn)
+        else:
+            # No transactions: propagate the available balance to fill the gap
+            if acct.opening_balance is not None and acct.closing_balance is None:
+                acct.closing_balance = acct.opening_balance
+            elif acct.closing_balance is not None and acct.opening_balance is None:
+                acct.opening_balance = acct.closing_balance
+
+    return statement
+
+
+def verify_account_balances(statement: ParsedStatement) -> ParsedStatement:
+    """Verify account-level balance consistency against transactions.
+
+    For accounts with transactions:
+      * If both ``opening_balance`` and ``closing_balance`` are present, verify
+        that ``closing = opening + Σtxn.amount`` (within tolerance ``1e-6``).
+      * If the last transaction carries ``balance_after``, verify it matches
+        ``closing_balance``.
+
+    For accounts without transactions:
+      * If both balances are present, verify ``opening == closing``.
+
+    UNIT_TRUST accounts are skipped.
+    Idempotent: warnings already present are not re-appended.
+
+    Mutates and returns *statement*.
+    """
+    for acct in statement.accounts:
+        if acct.account_type == AccountType.UNIT_TRUST.value:
+            continue
+        txns = acct.transactions or []
+
+        if txns:
+            sorted_txns = sorted(txns, key=lambda t: t.posted_date or "")
+
+            # Verify closing_balance against last txn's balance_after
+            last_ba = sorted_txns[-1].balance_after
+            if last_ba is not None and acct.closing_balance is not None:
+                if abs(float(acct.closing_balance) - last_ba) > 1e-6:
+                    warn = (
+                        f"closing_balance mismatch for account '{acct.name}' "
+                        f"({acct.account_no}): closing_balance={acct.closing_balance:,.2f} "
+                        f"but last transaction balance_after={last_ba:,.2f}"
+                    )
+                    if warn not in statement.warnings:
+                        statement.warnings.append(warn)
+
+            # Verify closing = opening + Σamount
+            if acct.opening_balance is not None and acct.closing_balance is not None:
+                total_amount = sum(float(t.amount or 0.0) for t in sorted_txns)
+                expected_closing = float(acct.opening_balance) + total_amount
+                if abs(float(acct.closing_balance) - expected_closing) > 1e-6:
+                    warn = (
+                        f"closing_balance mismatch for account '{acct.name}' "
+                        f"({acct.account_no}): closing_balance={acct.closing_balance:,.2f} "
+                        f"but opening_balance + Σtransactions = "
+                        f"{acct.opening_balance:,.2f} + {total_amount:,.2f} = "
+                        f"{expected_closing:,.2f}"
+                    )
+                    if warn not in statement.warnings:
+                        statement.warnings.append(warn)
+        else:
+            # No transactions: opening should equal closing
+            if acct.opening_balance is not None and acct.closing_balance is not None:
+                if abs(float(acct.opening_balance) - float(acct.closing_balance)) > 1e-6:
+                    warn = (
+                        f"closing_balance mismatch for account '{acct.name}' "
+                        f"({acct.account_no}): opening_balance={acct.opening_balance:,.2f} "
+                        f"but closing_balance={acct.closing_balance:,.2f} "
+                        f"(no transactions to explain difference)"
+                    )
+                    if warn not in statement.warnings:
+                        statement.warnings.append(warn)
+
+    return statement
+
+
 def verify_fd_interest_consistency(statement: ParsedStatement) -> ParsedStatement:
     """Verify every fixed-deposit interest amount against principal × rate × tenor.
 

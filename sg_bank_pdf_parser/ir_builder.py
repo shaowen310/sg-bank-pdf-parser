@@ -128,7 +128,6 @@ class IRBuilder:
         account_holder: str | None = None,
         opening_balance: float | None = None,
         closing_balance: float | None = None,
-        balance: float | None = None,
         extras: dict[str, Any] | None = None,
         investment_holdings: list[InvestmentHolding] | None = None,
     ) -> "IRBuilder":
@@ -151,7 +150,6 @@ class IRBuilder:
             account_holder=account_holder,
             opening_balance=opening_balance,
             closing_balance=closing_balance,
-            balance=balance,
             extras=extras or None,
             investment_holdings=investment_holdings or None,
         )
