@@ -245,7 +245,7 @@ class IRBuilder:
         tags: list[str] | None = None,
         is_accrual: bool = False,
         is_reversal: bool = False,
-        is_transfer: bool = False,
+        is_internal_transfer: bool = False,
         related_txn_ids: list[str] | None = None,
         balance_after: float | None = None,
         extras: dict[str, Any] | None = None,
@@ -295,7 +295,7 @@ class IRBuilder:
             tags=tags or [],
             is_accrual=is_accrual,
             is_reversal=is_reversal,
-            is_transfer=is_transfer,
+            is_internal_transfer=is_internal_transfer,
             related_txn_ids=related_txn_ids or [],
             balance_after=balance_after,
             extras=extras,
@@ -389,7 +389,7 @@ class IRBuilder:
             tags=row.get("tags"),
             is_accrual=row.get("is_accrual", False),
             is_reversal=row.get("is_reversal", False),
-            is_transfer=row.get("is_transfer", False),
+            is_internal_transfer=row.get("is_internal_transfer", False),
             related_txn_ids=row.get("related_txn_ids") or [],
             balance_after=row.get("balance_after"),
             extras=row.get("extras"),
@@ -400,7 +400,7 @@ class IRBuilder:
     def build(self) -> ParsedStatement:
         """Assemble and return the final ``ParsedStatement``."""
         return ParsedStatement(
-            ir_version="2026.3",
+            ir_version="2026.4",
             parsed_at=datetime.now(timezone.utc).isoformat(),
             parser=self._parser,
             source_file=self._source_file,

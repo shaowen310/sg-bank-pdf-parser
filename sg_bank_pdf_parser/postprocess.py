@@ -208,7 +208,7 @@ def link_fd_to_ca(statement: ParsedStatement) -> ParsedStatement:
                         matched_on="CA amount == FD leg (principal + interest)",
                     )
                 else:
-                    fl.is_transfer = False
+                    fl.is_internal_transfer = False
 
     return statement
 
@@ -217,14 +217,14 @@ def _link_fd_ca(ca_txn: Transaction, fd_leg: Transaction,
                 matched_on: str = "") -> None:
     """Record a bidirectional FD <-> CA transfer link on both transactions.
 
-    Marks both the funding-account twin and the FD leg as ``is_transfer`` and
+    Marks both the funding-account twin and the FD leg as ``is_internal_transfer`` and
     cross-links their ``related_txn_ids`` (deduped). FD atomic tags
     (``fd_principal`` / ``fd_interest``) are copied onto the twin, and the
     ``fd_link`` extras are mirrored for traceability.
     """
     ca_txn.category_hint = "fixed_deposit"
-    ca_txn.is_transfer = True
-    fd_leg.is_transfer = True
+    ca_txn.is_internal_transfer = True
+    fd_leg.is_internal_transfer = True
     if fd_leg.txn_id not in ca_txn.related_txn_ids:
         ca_txn.related_txn_ids.append(fd_leg.txn_id)
     if ca_txn.txn_id not in fd_leg.related_txn_ids:
@@ -303,7 +303,7 @@ def verify_fx_base_amount(statement: ParsedStatement) -> ParsedStatement:
 def verify_transfer_links(statement: ParsedStatement) -> ParsedStatement:
     """Verify that every transfer transaction references its linked twins.
 
-    A transaction flagged ``is_transfer`` is one side of a matched pair/group
+    A transaction flagged ``is_internal_transfer`` is one side of a matched pair/group
     (e.g. a fixed-deposit placement and its funding-account twin). Two checks
     apply:
 
@@ -329,13 +329,13 @@ def verify_transfer_links(statement: ParsedStatement) -> ParsedStatement:
 
     for acct in statement.accounts:
         for txn in (acct.transactions or []):
-            if not txn.is_transfer:
+            if not txn.is_internal_transfer:
                 continue
             if not txn.related_txn_ids:
                 warn = (
                     f"transfer without linked twin: txn {txn.txn_id!r} "
                     f"(account {acct.account_no}, {txn.posted_date}, amount "
-                    f"{txn.amount}) is_transfer=true but related_txn_ids is empty"
+                    f"{txn.amount}) is_internal_transfer=true but related_txn_ids is empty"
                 )
                 if warn not in statement.warnings:
                     statement.warnings.append(warn)

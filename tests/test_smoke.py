@@ -219,7 +219,7 @@ def test_link_fd_to_ca_closure_with_interest():
     ca_txn = stmt.accounts[1].transactions[0]
     assert fd_txn.related_txn_ids == [ca_txn.txn_id]
     assert ca_txn.related_txn_ids == [fd_txn.txn_id]
-    assert ca_txn.is_transfer is True
+    assert ca_txn.is_internal_transfer is True
     assert ca_txn.category_hint == "fixed_deposit"
     assert "fd_principal" in ca_txn.tags
     assert "fd_interest" in ca_txn.tags
@@ -313,7 +313,7 @@ def test_link_fd_to_ca_separate_principal_and_interest_legs():
         "fd_interest",
         "fd_principal",
     ]
-    assert ca_txn.is_transfer is True
+    assert ca_txn.is_internal_transfer is True
     assert ca_txn.category_hint == "fixed_deposit"
 
 
@@ -362,13 +362,13 @@ def test_link_fd_to_ca_split_ca_credits():
     # Principal leg <-> principal CA credit.
     assert ca_p.txn_id in principal_leg.related_txn_ids
     assert principal_leg.txn_id in ca_p.related_txn_ids
-    assert principal_leg.is_transfer and ca_p.is_transfer
+    assert principal_leg.is_internal_transfer and ca_p.is_internal_transfer
     assert "fd_principal" in ca_p.tags
 
     # Interest leg <-> interest CA credit.
     assert ca_i.txn_id in interest_leg.related_txn_ids
     assert interest_leg.txn_id in ca_i.related_txn_ids
-    assert interest_leg.is_transfer and ca_i.is_transfer
+    assert interest_leg.is_internal_transfer and ca_i.is_internal_transfer
     assert "fd_interest" in ca_i.tags
 
     # Each CA credit links to exactly ONE FD leg (no cross-contamination).
@@ -389,7 +389,7 @@ def test_link_fd_to_ca_internal_fd_not_transfer():
     _ = fd_acct.add_transaction(
         posted_date="2026-06-02",
         amount=-10000.0,
-        is_transfer=True,  # extractor pre-marks every FD leg
+        is_internal_transfer=True,  # extractor pre-marks every FD leg
         tags=["fd_principal"],
         extras={"fd_link": {"deposit_no": "DEP-R", "fd_account_no": "FD1"}},
     )
@@ -398,7 +398,7 @@ def test_link_fd_to_ca_internal_fd_not_transfer():
     _ = link_fd_to_ca(stmt)
 
     leg = stmt.accounts[0].transactions[0]
-    assert leg.is_transfer is False
+    assert leg.is_internal_transfer is False
     assert leg.related_txn_ids == []
 
     _ = verify_transfer_links(stmt)
@@ -416,7 +416,7 @@ def test_verify_transfer_links_flags_orphan_transfer():
         .add_transaction(
             posted_date="2026-06-02",
             amount=100.0,
-            is_transfer=True,  # linked twin missing
+            is_internal_transfer=True,  # linked twin missing
         )
     )
     stmt = builder.build()
@@ -435,13 +435,13 @@ def test_verify_transfer_links_passes_linked_or_non_transfer():
     _ = linked.add_transaction(
         posted_date="2026-06-02",
         amount=100.0,
-        is_transfer=True,
+        is_internal_transfer=True,
         related_txn_ids=["FD-X"],
     )
     _ = builder.add_account(name="CA2", account_no="CA2").add_transaction(
         posted_date="2026-06-02",
         amount=50.0,
-        is_transfer=False,  # ordinary txn, links allowed to be empty
+        is_internal_transfer=False,  # ordinary txn, links allowed to be empty
     )
     stmt = builder.build()
     _ = verify_transfer_links(stmt)
@@ -463,13 +463,13 @@ def test_verify_transfer_links_flags_non_reciprocal():
     _ = a.add_transaction(
         posted_date="2026-06-02",
         amount=100.0,
-        is_transfer=True,
+        is_internal_transfer=True,
     )
     b = builder.add_account(name="FD", account_no="FD1")
     _ = b.add_transaction(
         posted_date="2026-06-02",
         amount=-100.0,
-        is_transfer=True,
+        is_internal_transfer=True,
         related_txn_ids=["C1"],  # B -> C (C absent); A not listed back
     )
     stmt = builder.build()

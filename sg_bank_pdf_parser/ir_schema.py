@@ -136,7 +136,7 @@ class Transaction:
     # === Cashflow flags ===
     is_accrual: bool = False  # True = accrual (credit card charge before settlement), False = actual
     is_reversal: bool = False
-    is_transfer: bool = False  # Transfer between accounts (inferable from single statement)
+    is_internal_transfer: bool = False  # Internal transfer only (between holder's own accounts)
 
     # === Relationship ===
     # IDs of transactions in other accounts that this one is the twin of
@@ -222,7 +222,7 @@ class Account:
 class ParsedStatement:
     """Top-level IR container — the output of any Extractor.to_ir()."""
 
-    ir_version: str = "2026.3"
+    ir_version: str = "2026.4"
     parsed_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     parser: ParserInfo = field(default_factory=lambda: ParserInfo(name="", version=""))
     source_file: str = ""
@@ -289,7 +289,7 @@ def _transaction_from_dict(td: dict[str, Any]) -> Transaction:
         tags=td.get("tags", []),
         is_accrual=td.get("is_accrual", False),
         is_reversal=td.get("is_reversal", False),
-        is_transfer=td.get("is_transfer", False),
+        is_internal_transfer=td.get("is_internal_transfer", False),
         related_txn_ids=td.get("related_txn_ids") or [],
         balance_after=td.get("balance_after"),
         extras=td.get("extras"),
@@ -374,7 +374,7 @@ def from_dict(data: dict[str, Any]) -> ParsedStatement:
     accounts = [_account_from_dict(a) for a in data.get("accounts", [])]
 
     return ParsedStatement(
-        ir_version=data.get("ir_version", "2026.3"),
+        ir_version=data.get("ir_version", "2026.4"),
         parsed_at=data.get("parsed_at", ""),
         parser=ParserInfo(**parser_data) if parser_data else ParserInfo(name="", version=""),
         source_file=data.get("source_file", ""),

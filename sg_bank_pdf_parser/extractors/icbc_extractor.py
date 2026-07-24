@@ -151,7 +151,7 @@ class ICBCExtractor(BaseExtractor):
                     amount=signed_amount,
                     currency=ccy,
                     description=str(t.get("remark", "") or "CLO"),
-                    is_transfer=True,
+                    is_internal_transfer=True,
                     category_hint="fixed_deposit",
                     tags=["fd_principal"],
                     balance_after=_icbc_parse_balance(t.get("balance")),

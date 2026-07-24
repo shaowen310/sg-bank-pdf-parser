@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/shaowen310/sg-bank-pdf-parser/main/references/ir.schema.json",
   "title": "Bank Statement IR",
-  "description": "Public, language-agnostic schema for the intermediate representation (IR) produced by sg-bank-pdf-parser (sg_bank_pdf_parser). The authoritative Python definitions live in sg_bank_pdf_parser/ir_schema.py. ir_version 2026.3 is required: from_dict() rejects any IR that lacks the 'accounts' field (i.e. IR from parsers older than 2026.3).",
+  "description": "Public, language-agnostic schema for the intermediate representation (IR) produced by sg-bank-pdf-parser (sg_bank_pdf_parser). The authoritative Python definitions live in sg_bank_pdf_parser/ir_schema.py. ir_version 2026.4 is required: from_dict() rejects any IR that lacks the 'accounts' field (i.e. IR from parsers older than 2026.3).",
   "type": "object",
   "required": ["ir_version", "accounts"],
   "additionalProperties": true,
   "properties": {
     "ir_version": {
       "type": "string",
-      "description": "Schema/IR version, e.g. \"2026.3\". Downstream consumers must require >= 2026.3."
+      "description": "Schema/IR version, e.g. \"2026.4\". Downstream consumers must require >= 2026.4."
     },
     "parsed_at": { "type": "string" },
     "parser": { "$ref": "#/$defs/ParserInfo" },
@@ -105,7 +105,10 @@
         "tags": { "type": "array", "items": { "type": "string" } },
         "is_accrual": { "type": "boolean" },
         "is_reversal": { "type": "boolean" },
-        "is_transfer": { "type": "boolean" },
+        "is_internal_transfer": {
+          "type": "boolean",
+          "description": "Indicates whether this transaction is an internal transfer only (between the account holder's own accounts)."
+        },
         "related_txn_id": { "type": ["string", "null"] },
         "source_account": {
           "oneOf": [{ "$ref": "#/$defs/SourceAccount" }, { "type": "null" }]
