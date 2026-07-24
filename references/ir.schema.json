@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/shaowen310/sg-bank-pdf-parser/main/references/ir.schema.json",
   "title": "Bank Statement IR",
-  "description": "Public, language-agnostic schema for the intermediate representation (IR) produced by sg-bank-to-md (sg_bank_pdf_parser). The authoritative Python definitions live in sg_bank_pdf_parser/ir_schema.py. ir_version 2026.3 is required: from_dict() rejects any IR that lacks the 'accounts' field (i.e. IR from parsers older than 2026.3).",
+  "description": "Public, language-agnostic schema for the intermediate representation (IR) produced by sg-bank-pdf-parser (sg_bank_pdf_parser). The authoritative Python definitions live in sg_bank_pdf_parser/ir_schema.py. ir_version 2026.3 is required: from_dict() rejects any IR that lacks the 'accounts' field (i.e. IR from parsers older than 2026.3).",
   "type": "object",
   "required": ["ir_version", "accounts"],
   "additionalProperties": true,

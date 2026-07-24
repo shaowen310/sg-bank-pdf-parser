@@ -1,5 +1,5 @@
 ---
-name: sg-bank-to-md
+name: sg-bank-pdf-parser
 description: >-
   Convert Singapore bank (DBS, OCBC, UOB, ICBC) PDF statements into structured
   Markdown tables and machine-readable IR JSON. Three-stage pipeline (parse → IR

@@ -8,7 +8,7 @@ This repository is both:
 - a **pip-installable Python library** (`sg_bank_pdf_parser`) exposing the
   `sgbankpdf` CLI, and
 - a **CodeBuddy skill** (`SKILL.md` + `references/`) — installable via
-  `pack_and_install_skill.py` when checked out as the `sg-bank-to-md` submodule
+  `pack_and_install_skill.py` when checked out as the `sg-bank-pdf-parser` submodule
   of the [`skills`](https://github.com/shaowen310/skills) monorepo.
 
 ## Supported banks / statement families
